@@ -1029,24 +1029,16 @@ const menuBtn = document.getElementById('menuBtn');
 function setMenu(open) {
   menu.hidden = !open;
   menuBtn.setAttribute('aria-expanded', String(open));
-  if (open) { people.close(); setMeMenu(false); renderArchMenu(); }
+  if (open) { people.close(); renderArchMenu(); }
   if (open) (dock.querySelector('.on') || dock.firstElementChild)?.focus();
 }
 menuBtn.addEventListener('click', () => setMenu(menu.hidden));
 document.getElementById('menuClose').addEventListener('click', () => { setMenu(false); menuBtn.focus(); });
 // 「我的」：我的島民
-const meMenu = document.getElementById('meMenu');
-const meBtn = document.getElementById('meBtn');
-function setMeMenu(open) {
-  meMenu.hidden = !open;
-  meBtn.setAttribute('aria-expanded', String(open));
-  if (open) { setMenu(false); people.close(); meMenu.querySelector('button')?.focus(); }
-}
-meBtn.addEventListener('click', () => setMeMenu(meMenu.hidden));
-document.getElementById('avatarBtn').addEventListener('click', () => { setMeMenu(false); creator.open(); });
+document.getElementById('meBtn').addEventListener('click', () => { setMenu(false); people.close(); creator.open(); });
 // 聚會、活動：不管在哪個群島，都直接打開青少年群島的那座島
 function goIsland(id) {
-  setMenu(false); setMeMenu(false);
+  setMenu(false);
   if (arch !== 'main') { switchArch('main'); setTimeout(() => openIsland(id), 1700); } else openIsland(id);
 }
 document.getElementById('meetBtn').addEventListener('click', () => goIsland('campus'));
@@ -1060,12 +1052,11 @@ const fishCount = document.getElementById('fishCount');
 const fishBtn = document.getElementById('fishBtn');
 const updateFishCount = () => { const n = remainingToday(); fishCount.textContent = `${n}`; fishBtn.classList.toggle('has-left', n > 0); fishBtn.setAttribute('aria-label', `釣魚，今天還剩 ${n} 次`); };
 updateFishCount();
-function openFishing() { setMenu(false); setMeMenu(false); fishing.open(); }
+function openFishing() { setMenu(false); fishing.open(); }
 fishBtn.addEventListener('click', openFishing);
 new MutationObserver(updateFishCount).observe(document.querySelector('.fishing'), { attributes: true, attributeFilter: ['hidden'] });
 addEventListener('pointerdown', (e) => {
   if (!menu.hidden && !menu.contains(e.target) && !menuBtn.contains(e.target)) setMenu(false);
-  if (!meMenu.hidden && !meMenu.contains(e.target) && !meBtn.contains(e.target)) setMeMenu(false);
 });
 function renderMenu() {
   dock.innerHTML = '';
@@ -1375,7 +1366,6 @@ document.getElementById('homeBtn').addEventListener('click', goHome);
 addEventListener('keydown', (e) => {
   if (e.key !== 'Escape') return;
   if (!menu.hidden) { setMenu(false); menuBtn.focus(); return; }
-  if (!meMenu.hidden) { setMeMenu(false); meBtn.focus(); return; }
   goHome();
 });
 panelBody.addEventListener('input', (e) => { if (e.target.dataset.staff === 'q') staff.filterFiles(panelBody, e.target.value); });
@@ -1581,7 +1571,7 @@ const prayer = createPrayer({ signIn: store.signIn, idToken: store.idToken, sign
 
 // 操練本藏寶圖：每週交操練本拼一塊
 const practice = createPractice({ signIn: store.signIn, signedIn: () => !!store.myUid() });
-document.getElementById('mapBtn').addEventListener('click', () => { setMenu(false); setMeMenu(false); practice.open(); });
+document.getElementById('mapBtn').addEventListener('click', () => { setMenu(false); practice.open(); });
 
 // 召會生活人數統計看板（服事者群島）
 const chlife = createChlife({ load: (force) => staff.loadChlife(force), getState: () => staff.chlifeState });
@@ -1597,7 +1587,7 @@ if (tsunami.active) pinEls[islandObjs.findIndex((i) => i.userData.id === 'calend
 // 操作教學：有新功能時自動跳出簡短版；目錄的「❓ 教學」可以看完整版
 const tour = createTour({
   isStaff: () => staffAccess,
-  prepare: () => { closePanel(); setMenu(false); setMeMenu(false); lambReturn = null; lambCard.close(); },
+  prepare: () => { closePanel(); setMenu(false); lambReturn = null; lambCard.close(); },
 });
 document.getElementById('tourBtn').addEventListener('click', () => tour.start(false));
 tour.autoStart();
