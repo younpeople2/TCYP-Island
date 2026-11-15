@@ -56,7 +56,7 @@ function rollFish(r) {
   const size = Math.round(f.size[0] + rand() * (f.size[1] - f.size[0]));
   return { ...f, cm: size };
 }
-const fishEm = (f, hidden = false) => `<span class="fx-em${f.gold ? ' gold' : ''}" style="${f.hue ? `--hue:${f.hue}deg;` : ''}${hidden ? 'filter:brightness(0);opacity:.25;' : ''}">${f.em}</span>`;
+export const fishEm = (f, hidden = false) => `<span class="fx-em${f.gold ? ' gold' : ''}" style="${f.hue ? `--hue:${f.hue}deg;` : ''}${hidden ? 'filter:brightness(0);opacity:.25;' : ''}">${f.em}</span>`;
 const stars = (r) => '★'.repeat(RARITY[r].stars);
 
 function untilMidnight() {
@@ -66,7 +66,8 @@ function untilMidnight() {
 }
 
 // ---------- 介面 ----------
-export function createFishing() {
+// naming（可選）：釣到魚後「為這條魚取名字」的區塊，由小羊群島提供 { html(fish), click(e, fish, rerender) }
+export function createFishing({ naming } = {}) {
   const el = document.createElement('div');
   el.className = 'fishing';
   el.hidden = true;
@@ -137,6 +138,7 @@ export function createFishing() {
           <p class="fx-desc">${f.desc}</p>
         </div></div>
       </div>
+      ${naming ? `<div class="fx-name">${naming.html(f)}</div>` : ''}
       <button class="btn-primary fx-act">${DAILY - s.used > 0 ? '再釣一次' : '收竿，明天見'}</button>`;
   }
 
@@ -262,6 +264,7 @@ export function createFishing() {
     const b = e.target.closest('button');
     if (!b) return;
     if (b.classList.contains('fx-close')) return close();
+    if (naming && b.closest('.fx-name')) return naming.click(e, catchFish, render);
     if (b.dataset.tab) { if (phase === 'idle' || phase === 'result') { tab = b.dataset.tab; render(); } return; }
     if (b.classList.contains('fx-act')) act();
   });
@@ -269,7 +272,7 @@ export function createFishing() {
   addEventListener('keydown', (e) => {
     if (el.hidden) return;
     if (e.key === 'Escape') { e.stopPropagation(); close(); return; }
-    if (e.key === ' ' && tab === 'fish' && !e.repeat && !e.target.closest?.('.fx-tabs, .fx-close')) {
+    if (e.key === ' ' && tab === 'fish' && !e.repeat && !e.target.closest?.('.fx-tabs, .fx-close, .fx-name')) {
       e.preventDefault();
       if (!body.querySelector('.fx-act')?.disabled) act();
     }
@@ -292,5 +295,7 @@ export function createFishing() {
     el.hidden = true;
     lastFocus?.focus?.();
   }
-  return { open, close };
+  // 取名區塊等的資料讀好了就重畫；正在輸入名字時不重畫，免得字被洗掉
+  const refresh = () => { if (!el.hidden && phase === 'result' && !el.querySelector('.fx-name')?.contains(document.activeElement)) render(); };
+  return { open, close, refresh };
 }

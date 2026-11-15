@@ -12,7 +12,7 @@ import { createChlife } from './chlife.js';
 import { createPrayer, load as loadPrayer, state as prayerState, onChange as onPrayerChange } from './prayer.js';
 import { createTour } from './tour.js';
 import { createPractice } from './practice.js';
-import { lambIslands, lambState, loadLambs, resetLambs, onLambs, createLambWorld, createLambCard, prayFor } from './lambs.js';
+import { lambIslands, lambState, loadLambs, resetLambs, onLambs, createLambWorld, createLambCard, prayFor, fishNaming } from './lambs.js';
 
 // ================= 基本設定 =================
 const canvas = document.getElementById('scene');
@@ -1034,7 +1034,7 @@ function setMenu(open) {
 }
 menuBtn.addEventListener('click', () => setMenu(menu.hidden));
 document.getElementById('menuClose').addEventListener('click', () => { setMenu(false); menuBtn.focus(); });
-// 「我的」：我的島民、釣魚
+// 「我的」：我的島民
 const meMenu = document.getElementById('meMenu');
 const meBtn = document.getElementById('meBtn');
 function setMeMenu(open) {
@@ -1052,10 +1052,13 @@ function goIsland(id) {
 document.getElementById('meetBtn').addEventListener('click', () => goIsland('campus'));
 document.getElementById('eventBtn').addEventListener('click', () => goIsland('calendar'));
 // 釣魚
-const fishing = createFishing();
+const fishing = createFishing({ naming: fishNaming({ signedIn: () => !!store.myUid(), signIn: () => store.signIn().catch(() => {}) },
+  (what) => { if (what === 'add') { fishing.close(); prayer.open('add'); } }) });
+onLambs(() => fishing.refresh());
+onPrayerChange(() => fishing.refresh());
 const fishCount = document.getElementById('fishCount');
 const fishBtn = document.getElementById('fishBtn');
-const updateFishCount = () => { fishCount.textContent = `${remainingToday()}`; fishBtn.setAttribute('aria-label', `釣魚，今天還剩 ${remainingToday()} 次`); };
+const updateFishCount = () => { const n = remainingToday(); fishCount.textContent = `${n}`; fishBtn.classList.toggle('has-left', n > 0); fishBtn.setAttribute('aria-label', `釣魚，今天還剩 ${n} 次`); };
 updateFishCount();
 function openFishing() { setMenu(false); setMeMenu(false); fishing.open(); }
 fishBtn.addEventListener('click', openFishing);
@@ -1097,7 +1100,7 @@ function buildArch(key) {
   ARCHES[key].islands().forEach((def) => makePin(placeIsland(def, center, ring, key)));
   islandObjs.filter((i) => i.userData.group === key && !i.userData.def.center).forEach((isl) => archExtras[key].push(...bridge(isl, center, ring)));
   if (key === 'lamb') {
-    lambWorld = createLambWorld({ islands: islandObjs.filter((i) => i.userData.group === 'lamb' && !i.userData.def.center), onTick, pinsEl, camera, lowEnd: LOW_END });
+    lambWorld = createLambWorld({ islands: islandObjs.filter((i) => i.userData.group === 'lamb' && !i.userData.def.center && i.userData.id !== 'lb-water'), onTick, pinsEl, camera, lowEnd: LOW_END });
     syncLambWorld();
   }
 }
@@ -1160,7 +1163,7 @@ renderMenu();
 function syncLambWorld() {
   if (!lambWorld) return;
   const d = store.myUid() ? lambState.data : null;
-  lambWorld.sync(d ? d.lambs : null);
+  lambWorld.sync(d ? d.lambs.filter((l) => l.b) : null);   // 牧場上只有受浸的小羊；小魚在魚缸
   lambWorld.setFlowers(d ? d.totalPrayers : 0);
 }
 // 從牧場清單打開小羊卡片：關掉卡片後回到原來的清單和捲動位置（不是回全景）
@@ -1189,7 +1192,7 @@ function allPrayedParty() {
   partyDay = lambState.data.today;
   const el = document.createElement('div');
   el.className = 'lamb-party';
-  el.innerHTML = '<div class="lp-burst" aria-hidden="true">' + '🎉✨💖🐑🌸⭐'.repeat(4).split('').map((c, i) => `<i style="--a:${i * 15}deg;--d:${(i % 5) * 60}ms">${c}</i>`).join('') + '</div><p role="status">今天每一隻小羊都被記念了！</p>';
+  el.innerHTML = '<div class="lp-burst" aria-hidden="true">' + '🎉✨💖🐑🌸⭐'.repeat(4).split('').map((c, i) => `<i style="--a:${i * 15}deg;--d:${(i % 5) * 60}ms">${c}</i>`).join('') + '</div><p role="status">今天每一位朋友都被記念了！</p>';
   document.body.appendChild(el);
   setTimeout(() => el.remove(), 3200);
 }

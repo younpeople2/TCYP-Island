@@ -1,9 +1,11 @@
 // 小羊群島：自己登記的福音朋友變成一隻隻小羊。每天為每隻小羊禱告一次，小羊就會長大。
+// 還沒得救的朋友是魚缸裏的小魚（魚種由釣魚遊戲取名決定），代禱牆標記受浸就變成小羊，等級延續。
 // 名字只有登記的本人看得到（後端 lambs 只回傳自己的）；禱告紀錄存在代禱網的試算表，一天一次由後端判斷。
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/BufferGeometryUtils.js';
-import { post, summaryHtml as prayerSummary, state as prayerState } from './prayer.js';
+import { post, summaryHtml as prayerSummary, state as prayerState, load as loadPrayer } from './prayer.js';
 import { obstaclesOf, makeWalker } from './islanders.js';
+import { FISH, fishEm } from './fishing.js';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
@@ -50,6 +52,8 @@ export async function loadLambs() {
 export function resetLambs() { Object.assign(lambState, { status: 'idle', data: null, error: null, loadedAt: 0 }); emit(); }
 
 const lambKey = (l) => `${l.id}#${l.index}`;
+const speciesOf = (l) => FISH.find((f) => f.id === l.fish) || FISH[0];
+// 等級名稱：小羊用羊的名字，小魚用魚種
 export function findLamb(key) { return lambState.data?.lambs.find((l) => lambKey(l) === key) || null; }
 
 function badges(d) {
@@ -60,9 +64,10 @@ function badges(d) {
     ['🔥', '連續 3 天', d.userStreak >= 3],
     ['🔥', '連續 7 天', d.userStreak >= 7],
     ['🏆', '連續 30 天', d.userStreak >= 30],
-    ['🐑', '每隻小羊都記念過', L.length > 0 && L.every((l) => l.xp >= 1)],
-    ['🌟', '有小羊長到活潑羊', L.some((l) => lv(l) >= 3)],
-    ['💫', '全部長到活潑羊', L.length > 0 && L.every((l) => lv(l) >= 3)],
+    ['🙏', '每位朋友都記念過', L.length > 0 && L.every((l) => l.xp >= 1)],
+    ['🌟', '有朋友升到 Lv3', L.some((l) => lv(l) >= 3)],
+    ['💫', '全部升到 Lv3', L.length > 0 && L.every((l) => lv(l) >= 3)],
+    ['🐑', '有小魚變成小羊', L.some((l) => l.b)],
     ['🧣', '有朋友進了小排', L.some((l) => l.g)],
   ];
 }
@@ -73,31 +78,50 @@ const hero = (d, sub) => `<div class="p-hero" style="--c:${d.tint}"><div class="
 
 function todayHtml(d) {
   const n = d.lambs.length, done = d.lambs.filter((l) => l.prayedToday).length;
-  return `<div class="lb-today"><div class="lb-today-top"><b>今天為 ${done}／${n} 隻小羊禱告</b><span>🔥 連續 ${d.userStreak} 天・共 ${d.totalPrayers} 次</span></div>
+  return `<div class="lb-today"><div class="lb-today-top"><b>今天為 ${done}／${n} 位朋友禱告</b><span>🔥 連續 ${d.userStreak} 天・共 ${d.totalPrayers} 次</span></div>
     <span class="lb-bar"><i style="width:${n ? (done / n) * 100 : 0}%"></i></span>
-    ${n && done === n ? '<p class="lb-alldone">🎉 今天每一隻小羊都被記念了！</p>' : ''}</div>`;
+    ${n && done === n ? '<p class="lb-alldone">🎉 今天每一位朋友都被記念了！</p>' : ''}</div>`;
 }
-function pastureHtml(auth) {
-  if (!auth.signedIn()) return sec('', `<p>登入後，你在代禱牆登記的朋友會變成小羊，住在這座牧場。每天為他們禱告，小羊就會長大！</p><div class="goto"><button data-open="signin">用 Google 帳號登入</button></div>`);
+// 牧場和魚缸共用：沒登入、讀取中、讀不到、還沒有登記
+function guard(auth) {
+  if (!auth.signedIn()) return sec('', `<p>登入後，你在代禱牆登記的朋友會住進這裏：還沒得救的朋友是魚缸裏的小魚，受浸以後就變成牧場上的小羊。每天為他們禱告，他們就會長大！</p><div class="goto"><button data-open="signin">用 Google 帳號登入</button></div>`);
   const s = lambState;
-  if (s.status === 'error' && !s.data) return sec('', `<p class="cr-warn">小羊們暫時讀不到（${esc(s.error)}）。</p>`);
-  if (!s.data) return sec('', '<p class="hint">正在叫小羊們回來…</p>');
-  const d = s.data;
-  if (!d.lambs.length) return sec('', `<p>你的牧場還沒有小羊。到代禱牆新增你邀約的朋友，或認領你以前在舊網站的登記，他們就會變成小羊住進來。</p><div class="goto"><button data-open="prayer-add">➕ 新增代禱名單</button><button data-open="prayer">🙋 認領以前的登記</button></div>`);
-  const list = [...d.lambs].sort((a, b) => Number(a.prayedToday) - Number(b.prayedToday) || b.xp - a.xp);
-  return sec('今天的牧場', todayHtml(d))
-    + sec('我的小羊', `<ul class="lb-list">${list.map((l) => {
-      const L = levelOf(l.xp);
-      return `<li><button class="lb-who" data-lamb-open="${esc(lambKey(l))}"><b>${esc(l.name)}</b><small>Lv${L.lv} ${L.name}${l.g ? '・🧣' + esc(l.g.n) : ''}${l.c ? '・✋' : ''}${l.b ? '・✨受浸' : ''}</small><span class="lb-bar sm"><i style="width:${L.pct * 100}%"></i></span></button>
-        ${l.prayedToday ? '<span class="lb-done">✅ 今天</span>' : `<button class="lb-pray" data-lamb-pray="${esc(lambKey(l))}">🙏 禱告</button>`}</li>`;
-    }).join('')}</ul>`)
+  if (s.status === 'error' && !s.data) return sec('', `<p class="cr-warn">暫時讀不到（${esc(s.error)}）。</p>`);
+  if (!s.data) return sec('', '<p class="hint">正在叫大家回來…</p>');
+  if (!s.data.lambs.length) return sec('', `<p>這裏還是空的。到「釣魚」釣到魚就能為牠取名（代表一位還沒得救的同學），或到代禱牆新增你邀約的朋友、認領以前的登記。</p><div class="goto"><button data-open="fishing">🎣 去釣魚</button><button data-open="prayer-add">➕ 新增代禱名單</button><button data-open="prayer">🙋 認領以前的登記</button></div>`);
+  return '';
+}
+function listHtml(list) {
+  return `<ul class="lb-list">${[...list].sort((a, b) => Number(a.prayedToday) - Number(b.prayedToday) || b.xp - a.xp).map((l) => {
+    const L = levelOf(l.xp);
+    return `<li><button class="lb-who" data-lamb-open="${esc(lambKey(l))}"><b>${l.b ? '' : fishEm(speciesOf(l)) + ' '}${esc(l.name)}</b><small>Lv${L.lv} ${l.b ? L.name : speciesOf(l).name}${l.g ? '・🧣' + esc(l.g.n) : ''}${l.c ? '・✋' : ''}${l.b ? '・✨受浸' : ''}</small><span class="lb-bar sm"><i style="width:${L.pct * 100}%"></i></span></button>
+      ${l.prayedToday ? '<span class="lb-done">✅ 今天</span>' : `<button class="lb-pray" data-lamb-pray="${esc(lambKey(l))}">🙏 禱告</button>`}</li>`;
+  }).join('')}</ul>`;
+}
+const footHint = sec('', '<p class="hint">在代禱牆改朋友的名字，等級會保留；在代禱牆標記「受浸」，小魚就會變成小羊搬到牧場，等級一樣延續。只有你自己看得到名字。</p>');
+function pastureHtml(auth) {
+  const g = guard(auth);
+  if (g) return g;
+  const d = lambState.data, lambs = d.lambs.filter((l) => l.b);
+  return sec('今天', todayHtml(d))
+    + sec('我的小羊', lambs.length ? listHtml(lambs) : `<p>牧場還沒有小羊。魚缸裏的朋友受浸以後，就會變成小羊住進來。</p><div class="goto"><button data-goto="lb-water">🐠 去我的魚缸</button></div>`)
     + sec('徽章', `<div class="lb-badges">${badges(d).map(([em, label, got]) => `<span class="${got ? 'got' : ''}" title="${esc(label)}">${em}<small>${esc(label)}</small></span>`).join('')}</div>`)
-    + sec('', '<p class="hint">在代禱牆改朋友的名字，小羊的成長會保留。只有你自己看得到小羊的名字。</p>');
+    + footHint;
+}
+function tankHtml(auth) {
+  const g = guard(auth);
+  if (g) return g;
+  const d = lambState.data, fish = d.lambs.filter((l) => !l.b);
+  return sec('今天', todayHtml(d))
+    + sec('我的小魚', (fish.length ? listHtml(fish) : '<p>魚缸是空的。釣到魚就能為牠取名，代表一位還沒得救的同學。</p>')
+      + '<div class="goto"><button data-open="fishing">🎣 去釣魚</button></div>')
+    + sec('', '<p class="hint">每條小魚代表一位還沒得救的同學。代禱牆上還沒有魚種的朋友先當吳郭魚，之後釣到別的魚可以換給他。</p>')
+    + footHint;
 }
 
 export function lambIslands(auth) {
-  // 三座牧場島內容一樣，合成一個「我的牧場」入口；溪水旁、羊圈只當風景（沒有標籤，點了也是打開我的牧場）
-  const pasture = (id, name, emoji, tint, angle, sub, alias) => ({ id, name, short: name, emoji, tint, angle, lamb: true, alias, render: () => hero(LAMB_ISLANDS.find((x) => x.id === id), sub) + pastureHtml(auth) });
+  // 我的牧場（小羊）、我的魚缸（小魚）各一個入口；草場只當風景（沒有標籤，點了打開我的牧場）
+  const pasture = (id, name, emoji, tint, angle, sub, body, alias) => ({ id, name, short: name, emoji, tint, angle, lamb: true, alias, render: () => hero(LAMB_ISLANDS.find((x) => x.id === id), sub) + body(auth) });
   const LAMB_ISLANDS = [
     {
       id: 'lb-altar', name: '金香壇之島', short: '代禱牆', emoji: '🕯️', tint: '#fff1c9', center: true, lamb: true,
@@ -108,14 +132,57 @@ export function lambIslands(auth) {
           + sec('🙏 代禱牆', `<p>把你邀約的同學朋友加進代禱名單，大家一起為他們禱告，也一起關心他們：<b>答應前來 → 進入小排 → 受浸</b>。</p>
             ${prayerSummary()}<div class="goto"><button data-open="prayer">🙏 打開代禱牆</button><button data-open="prayer-add">➕ 新增代禱名單</button></div>`)
           + (auth.signedIn() && !mine ? sec('🙋 以前登記過嗎？', '<p>在舊網站登記過的人，可以打開代禱牆，找到自己那一筆按「🙋 這是我登記的」，服事者確認後就會變成你的。</p>') : '')
-          + sec('🐑 我的小羊', `${me || '<p>你登記的朋友會變成小羊，住在旁邊的牧場。每天為他們禱告，小羊就會長大。</p>'}<div class="goto"><button data-goto="lb-grass">🌿 去我的牧場看小羊</button></div>`);
+          + sec('🐠 我的魚缸與小羊', `${me || '<p>還沒得救的朋友是魚缸裏的小魚，受浸以後變成牧場上的小羊。每天為他們禱告，他們就會長大。</p>'}<div class="goto"><button data-goto="lb-water">🐠 我的魚缸</button><button data-goto="lb-grass">🌿 我的牧場</button></div>`);
       },
     },
-    pasture('lb-grass', '我的牧場', '🌿', '#e3f4d2', 90, '青草地、溪水旁、羊圈，都是你的小羊住的地方'),
-    pasture('lb-water', '溪水旁', '💧', '#d8eef6', 210, '', 'lb-grass'),
-    pasture('lb-fold', '羊圈', '🏡', '#f6e7d2', 330, '', 'lb-grass'),
+    pasture('lb-grass', '我的牧場', '🌿', '#e3f4d2', 90, '青草地和草場，是已經得救的小羊住的地方', pastureHtml),
+    pasture('lb-water', '我的魚缸', '🐠', '#d8eef6', 210, '溪水旁的魚缸，住著還沒得救的福音朋友', tankHtml),
+    pasture('lb-fold', '草場', '🌾', '#f6e7d2', 330, '', pastureHtml, 'lb-grass'),
   ];
   return LAMB_ISLANDS;
+}
+
+// ---------- 釣到魚：為這條魚取名字（＝加到代禱牆，一天最多 3 個，後端把關） ----------
+export function fishNaming(auth, onDone) {
+  let busy = false, msg = '', last = null;
+  const html = (f) => {
+    if (f !== last) { last = f; msg = ''; }
+    if (f.named) return `<p class="fn-done">${fishEm(f)} 這條${esc(f.name)}代表 <b>${esc(f.named)}</b>，已經放進你的魚缸了！</p>`;
+    if (!auth.signedIn()) return '<p class="fn-hint">登入後可以為這條魚取名字，代表一位還沒得救的同學，放進你的魚缸。</p><button data-fn="signin">用 Google 帳號登入</button>';
+    if (lambState.status === 'idle') loadLambs();
+    if (prayerState.status === 'idle') loadPrayer();
+    if (!lambState.data || prayerState.status !== 'ready') return '<p class="fn-hint">正在打開你的魚缸…</p>';
+    const recs = prayerState.rows.filter((r) => r.mine);
+    if (!recs.length) return '<p class="fn-hint">先到代禱牆登記一筆代禱名單，就能為釣到的魚取名字。</p><button data-fn="add">➕ 新增代禱名單</button>';
+    const fish = lambState.data.lambs.filter((l) => !l.b);
+    return `<h4>這條魚代表哪位還沒得救的同學？</h4>
+      ${fish.length ? `<select class="fn-pick" aria-label="選代禱牆上的朋友"><option value="">＋ 新的名字</option>${fish.map((l) => `<option value="${esc(lambKey(l))}">${esc(l.name)}（現在是${esc(speciesOf(l).name)}）</option>`).join('')}</select>` : ''}
+      <input class="fn-new" maxlength="20" placeholder="同學的名字" aria-label="新的名字">
+      ${recs.length > 1 ? `<select class="fn-rec" aria-label="加到哪一筆登記">${recs.map((r) => `<option value="${esc(r.id)}">加到：${esc(r.group || '')} ${esc(r.name)}</option>`).join('')}</select>` : ''}
+      <button class="fn-ok" data-fn="ok"${busy ? ' disabled' : ''}>🐠 放進魚缸</button>
+      ${msg ? `<p class="fn-msg" role="status">${esc(msg)}</p>` : ''}
+      <small class="fn-hint">新的名字會加到你的代禱牆名單（一天最多 3 個）。</small>`;
+  };
+  async function click(e, f, rerender) {
+    const act = e.target.closest('[data-fn]')?.dataset.fn;
+    if (act === 'signin') return auth.signIn();
+    if (act === 'add') return onDone?.('add');
+    if (act !== 'ok' || busy || !f) return;
+    const box = e.target.closest('.fx-name');
+    const picked = findLamb(box.querySelector('.fn-pick')?.value || '');
+    const name = picked ? picked.name : box.querySelector('.fn-new').value.trim();
+    if (!name) { msg = '請選一位朋友，或輸入新的名字'; return rerender(); }
+    const id = picked ? picked.id : box.querySelector('.fn-rec')?.value || prayerState.rows.find((r) => r.mine).id;
+    busy = true; msg = ''; rerender();
+    try {
+      await post('catchFish', { id, name, species: f.id });
+      f.named = name;
+      loadLambs(); loadPrayer();
+      onDone?.('named');
+    } catch (err) { msg = err.message; }
+    busy = false; rerender();
+  }
+  return { html, click };
 }
 
 // ---------- 3D 小羊 ----------
@@ -326,12 +393,12 @@ export function createLambCard({ onPray, onClose }) {
   function render() {
     const l = findLamb(key);
     if (!l) { close(); return; }
-    const L = levelOf(l.xp);
+    const L = levelOf(l.xp), sp = !l.b && speciesOf(l);
     const day = Number((lambState.data?.today || '').replace(/-/g, '')) || 0;
     const [text, ref] = PROMPTS[(day + l.index + l.name.length) % PROMPTS.length];
     el.innerHTML = `<button class="lc-x" data-act="close" aria-label="關閉">✕</button>
-      <div class="lc-top"><span class="lc-em" aria-hidden="true">🐑</span><div><b class="lc-name"></b><small>${esc(l.group)}</small></div><span class="lc-lv">Lv${L.lv} ${L.name}</span></div>
-      <div class="lc-xp"><span class="lb-bar"><i style="width:${L.pct * 100}%"></i></span><small>${L.next ? `再禱告 ${L.next.need - l.xp} 次長成「${L.next.name}」` : '已經是牧場之星了！'}・共 ${l.xp} 次・🔥 連續 ${l.streak} 天</small></div>
+      <div class="lc-top"><span class="lc-em" aria-hidden="true">${sp ? fishEm(sp) : '🐑'}</span><div><b class="lc-name"></b><small>${esc(l.group)}</small></div><span class="lc-lv">Lv${L.lv} ${sp ? sp.name : L.name}</span></div>
+      <div class="lc-xp"><span class="lb-bar"><i style="width:${L.pct * 100}%"></i></span><small>${L.next ? `再禱告 ${L.next.need - l.xp} 次${sp ? `升到 Lv${L.next.lv}` : `長成「${L.next.name}」`}` : sp ? '已經是最高等級了！' : '已經是牧場之星了！'}・共 ${l.xp} 次・🔥 連續 ${l.streak} 天</small></div>
       <div class="lc-tags">${l.c ? '<span>✋ 答應前來</span>' : ''}${l.g ? `<span class="g">🧣 ${esc(l.g.n)}</span>` : '<span class="off">還沒進小排</span>'}${l.b ? '<span class="b">✨ 已受浸</span>' : ''}</div>
       <p class="lc-prompt"></p>${ref ? `<small class="lc-ref">${esc(ref)}</small>` : ''}
       ${msg ? `<p class="lc-msg" role="status">${esc(msg)}</p>` : ''}
@@ -366,7 +433,7 @@ export async function prayFor(key) {
     lambState.data.userStreak = j.data.userStreak;
     emit();
     const lv = levelOf(l.xp);
-    return lv.lv > lvBefore ? `🎉 長大了！變成「${lv.name}」` : '謝謝你為他禱告 💖';
+    return lv.lv > lvBefore ? (l.b ? `🎉 長大了！變成「${lv.name}」` : `🎉 升級了！Lv${lv.lv}`) : '謝謝你為他禱告 💖';
   } catch (err) {
     if (err.message && err.message.includes('今天已經')) { l.prayedToday = true; emit(); return err.message; }
     Object.assign(l, { xp: before.xp, streak: before.streak, prayedToday: before.prayedToday });
