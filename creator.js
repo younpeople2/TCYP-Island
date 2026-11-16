@@ -1,6 +1,7 @@
 // 捏臉：建立／修改「我的島民」
 import * as THREE from 'three';
 import { OPTIONS, DEFAULT_AVATAR, avatarGeometry, avatarMaterial, randomAvatar, sanitize } from './avatar.js';
+import { ROLES, REGIONS } from './kids.js';
 
 const TABS = [
   ['body', '身體', [['gender', '性別'], ['skin', '膚色', 'skin']]],
@@ -19,6 +20,7 @@ export function createCreator({ initial, onSave, account }) {
   let adminView = false;
   let cfg = sanitize(initial || DEFAULT_AVATAR);
   let tab = 'body';
+  let prof = { role: '', city: '', school: '', dept: '' };   // 身分；已畢業的縣市、學校、科系不公開
 
   const el = document.createElement('div');
   el.className = 'creator';
@@ -34,6 +36,7 @@ export function createCreator({ initial, onSave, account }) {
       <div class="cr-side">
         <h2>👤 我的島民</h2>
         <label class="cr-name">暱稱 <input maxlength="8" placeholder="最多 8 個字" autocomplete="off"></label>
+        <div class="cr-role"></div>
         <div class="cr-tabs" role="tablist"></div>
         <div class="cr-opts"></div>
         <div class="cr-account"></div>
@@ -47,6 +50,23 @@ export function createCreator({ initial, onSave, account }) {
   const tabsEl = el.querySelector('.cr-tabs');
   const optsEl = el.querySelector('.cr-opts');
   const accEl = el.querySelector('.cr-account');
+  const roleEl = el.querySelector('.cr-role');
+  function renderRole() {
+    const grad = prof.role === 'grad';
+    roleEl.innerHTML = `<div class="cr-group"><b>身分</b><div class="cr-chips">${ROLES.map(([v, l]) =>
+      `<button data-role="${v}" class="${prof.role === v ? 'on' : ''}" aria-pressed="${prof.role === v}">${l}</button>`).join('')}</div></div>
+      ${grad ? `<div class="cr-grad">
+        <label>所在縣市 <select class="cr-city"><option value="">請選擇</option>${REGIONS.map((r) => `<optgroup label="${r.short}">${r.cities.map((c) => `<option${prof.city === c ? ' selected' : ''}>${c}</option>`).join('')}</optgroup>`).join('')}</select></label>
+        <label>學校 <input class="cr-school" maxlength="30" autocomplete="off"></label>
+        <label>科系 <input class="cr-dept" maxlength="30" autocomplete="off"></label>
+        <p class="cr-note">🔒 縣市、學校、科系不會公開，只有你自己和服事者的後台看得到。${account.enabled ? '登入後才會存到後台。' : ''}</p></div>` : ''}`;
+    if (grad) { roleEl.querySelector('.cr-school').value = prof.school; roleEl.querySelector('.cr-dept').value = prof.dept; }
+  }
+  // 把輸入框裏的字收回 prof（重畫或儲存前）
+  function readRole() {
+    const q = (c) => roleEl.querySelector(c);
+    if (q('.cr-city')) Object.assign(prof, { city: q('.cr-city').value, school: q('.cr-school').value.trim(), dept: q('.cr-dept').value.trim() });
+  }
   const statusEl = el.querySelector('.cr-status');
   const nameWarn = '暱稱會公開顯示在網站上，所有人都看得到。請不要用真實姓名、學校或班級。';
 
@@ -145,6 +165,7 @@ export function createCreator({ initial, onSave, account }) {
     if (t.classList.contains('cr-close')) return close();
     if (t.dataset.tab) { tab = t.dataset.tab; renderTabs(); return; }
     if (busy) return;
+    if (t.dataset.role) { readRole(); prof.role = t.dataset.role; renderRole(); return; }
     if (t.dataset.act === 'signin') {
       busy = true; setStatus('登入中…');
       account.signIn().then(() => setStatus('')).catch((err) => {
@@ -176,9 +197,11 @@ export function createCreator({ initial, onSave, account }) {
     else if (t.dataset.act === 'reset') { cfg = { ...DEFAULT_AVATAR, name: cfg.name }; }
     else if (t.classList.contains('cr-save')) {
       cfg.name = sanitize({ ...cfg, name: nameInput.value }).name;
+      readRole();
+      if (prof.role === 'grad' && !prof.city) { setStatus('請選擇你現在所在的縣市。'); roleEl.querySelector('.cr-city').focus(); return; }
       busy = true; setStatus('儲存中…');
-      Promise.resolve(onSave(cfg)).then(() => { setStatus(''); close(); })
-        .catch((err) => setStatus(err.code === 'too-fast' ? '存得太快了，請等 10 秒再按一次。' : '上傳到雲端失敗，請稍後再試一次。'))
+      Promise.resolve(onSave(cfg, { ...prof })).then(() => { setStatus(''); close(); })
+        .catch((err) => setStatus(err.code === 'too-fast' ? '存得太快了，請等 10 秒再按一次。' : err.code === 'server' ? err.message : '上傳到雲端失敗，請稍後再試一次。'))
         .finally(() => { busy = false; });
       return;
     } else if (t.dataset.key) {
@@ -204,6 +227,7 @@ export function createCreator({ initial, onSave, account }) {
     setStatus('');
     adminView = false;
     renderAccount();
+    renderRole();
     renderTabs();
     if (!renderer) initPreview(); else refreshFigure();
     cancelAnimationFrame(raf); loop();
@@ -218,5 +242,6 @@ export function createCreator({ initial, onSave, account }) {
   function setHidden(v) { hiddenByAdmin = !!v; if (!el.hidden) renderAccount(); }
   function setAdmin(v) { admin = !!v; if (!el.hidden) renderAccount(); }
   function setAvatar(a) { cfg = sanitize(a || DEFAULT_AVATAR); if (!el.hidden) { nameInput.value = cfg.name; renderTabs(); refreshFigure(); } }
-  return { open, close, setUser, setAvatar, setHidden, setAdmin };
+  function setProfile(p) { prof = { ...p }; if (!el.hidden) renderRole(); }
+  return { open, close, setUser, setAvatar, setHidden, setAdmin, setProfile };
 }

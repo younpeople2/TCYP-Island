@@ -12,6 +12,7 @@ import { createChlife } from './chlife.js';
 import { createPrayer, load as loadPrayer, state as prayerState, onChange as onPrayerChange } from './prayer.js';
 import { createTour } from './tour.js';
 import { createPractice } from './practice.js';
+import { KIDS_ISLANDS, loadProfile, saveProfile, onProfile, canSeeKids } from './kids.js';
 import { lambIslands, lambState, loadLambs, resetLambs, onLambs, createLambWorld, createLambCard, prayFor, fishNaming } from './lambs.js';
 
 // ================= 基本設定 =================
@@ -595,6 +596,48 @@ const builders = {
     [1, 2, 4, 5, 6].forEach((i) => put(isl, i, box(0.05, 0.25, 0.05, C.woodDark), 0.62, 0));
     put(isl, 5, tree('round', 0.8), -0.2, -0.2);
   },
+  // ---------- 台中的孩子群島（已畢業、服事者看得到） ----------
+  'kd-mid'(isl) {
+    // 家：亮著燈的房子和等門的人
+    const h = put(isl, 0, house({ w: 1.1, h: 0.75, d: 0.85, wall: '#fff6e0', roof: C.coral, roofH: 0.5, chimney: true }), 0, -0.1, 0.4);
+    windowsOn(h, 1.1, 0.35, 0.85, 1, 2, 0.4);
+    put(isl, 0, person(C.sky), 0.55, 0.45); put(isl, 0, person(C.sun), 0.75, 0.3);
+    // 指標：往北、南、東
+    const sign = new THREE.Group();
+    sign.add(cyl(0.03, 0.03, 0.8, C.woodDark, 6));
+    [[C.sky, 0.72, 0.4], [C.coral, 0.58, -0.6], [C.mint, 0.44, 1.6]].forEach(([c, y, r]) => { const b = box(0.4, 0.09, 0.03, c, 0.12, y); b.rotation.y = r; sign.add(b); });
+    put(isl, 3, sign);
+    [2, 5].forEach((i) => put(isl, i, tree('round', 0.9))); put(isl, 6, lamp(), 0.2, 0.1);
+  },
+  'kd-north'(isl) {
+    // 城市：高樓與校舍
+    const city = new THREE.Group();
+    [[0.9, -0.35, C.sky], [1.4, 0, '#c9d6e8'], [0.7, 0.35, C.purple]].forEach(([hgt, x, c]) => city.add(box(0.28, hgt, 0.28, c, x)));
+    city.add(cone(0.12, 0.3, '#c9d6e8', 4, 0, 1.4));
+    put(isl, 0, city);
+    put(isl, 3, house({ w: 0.9, h: 0.5, wall: '#fff', roof: C.sky }), 0, 0, 0.6);
+    [1, 5].forEach((i) => put(isl, i, tree('pine', 0.85))); put(isl, 2, lamp(), 0.2);
+  },
+  'kd-south'(isl) {
+    // 陽光、椰子樹和校舍
+    const palm = () => {
+      const g = new THREE.Group();
+      g.add(cyl(0.04, 0.06, 0.8, C.wood, 6));
+      for (let k = 0; k < 5; k++) { const p = new THREE.Group(); p.position.y = 0.82; p.rotation.y = k * 1.26; const l = box(0.4, 0.03, 0.1, C.leaf, 0.18); l.rotation.z = -0.3; p.add(l); g.add(p); }
+      return g;
+    };
+    put(isl, 0, house({ w: 1.0, h: 0.55, wall: '#fff3e6', roof: C.coral }), 0, -0.1, 0.3);
+    [1, 3, 6].forEach((i) => put(isl, i, palm(), 0.2, 0.1));
+    put(isl, 4, ball(0.18, C.sun, 0, 1.4, 0, 1)); put(isl, 2, lamp(), 0.2);
+  },
+  'kd-east'(isl) {
+    // 山和海
+    const mt = new THREE.Group();
+    mt.add(cone(0.6, 1.1, '#7fb85a', 7)); mt.add(cone(0.4, 0.7, '#8fc96a', 7, 0.5)); mt.add(cone(0.22, 0.25, '#fffaf0', 7, 0, 0.88));
+    put(isl, 0, mt);
+    put(isl, 3, house({ w: 0.7, h: 0.45, wall: '#eef8f0', roof: C.mint }), 0, 0, 0.8);
+    [2, 5].forEach((i) => put(isl, i, tree('pine', 0.9))); put(isl, 6, lamp(), 0.2);
+  },
   harbor(isl) {
     // 碼頭（往外海方向）
     const dock = new THREE.Group();
@@ -677,6 +720,7 @@ const builders = {
 const RING = 9.6;
 const STAFF_CENTER = new THREE.Vector3(0, 0, -72); // 服事者群島在遠方，平常看不到
 const LAMB_CENTER = new THREE.Vector3(-72, 0, 0);  // 小羊群島
+const KIDS_CENTER = new THREE.Vector3(72, 0, 0);   // 台中的孩子群島（已畢業才看得到）
 const islandObjs = [];
 function placeIsland(def, center, ring, group) {
   let cx = center.x, cz = center.z;
@@ -924,13 +968,14 @@ const creator = createCreator({
     signIn: store.signIn,
     signOut: store.signOutUser,
     reasons: store.REPORT_REASONS,
-    deleteMine: async () => { await store.deleteMine(); islanders.clearMine(); creator.setAvatar(null); },
+    deleteMine: async () => { await saveProfile(null, store.myUid()); await store.deleteMine(); islanders.clearMine(); creator.setAvatar(null); },
     adminReports: store.adminReports,
     adminSetHidden: async (pid, hidden) => { await store.adminSetHidden(pid, hidden); refreshOthers(true); },
     adminClear: store.adminClearReports,
   },
   // 先寫雲端，成功後才更新島上的樣子（失敗時兩邊保持一致）
-  onSave: async (a) => {
+  onSave: async (a, p) => {
+    await saveProfile(p, store.myUid());   // 身分不公開，存在代禱網後台（沒登入只存本機）
     const res = await store.saveMine(a);
     if (res.publicId) { myPid = res.publicId; islanders.removeOther(myPid); }
     islanders.setMine(a);
@@ -943,6 +988,7 @@ let authGen = 0;
 store.onUser(async (u) => {
   const gen = ++authGen;
   refreshStaffAccess(u);
+  loadProfile(u?.uid || null);
   prayer.userChanged();
   practice.userChanged();
   lambReturn = null; lambCard.close();
@@ -1074,14 +1120,15 @@ function renderMenu() {
 // 青少年群島（大家）、小羊群島（大家；小羊要登入）、服事者群島（資料夾共用名單裏的人）
 let arch = 'main';
 let staffAccess = false;
-const archExtras = { staff: [], lamb: [] };
-const built = { main: true, staff: false, lamb: false };
+const archExtras = { staff: [], lamb: [], kids: [] };
+const built = { main: true, staff: false, lamb: false, kids: false };
 const archMenu = document.getElementById('archMenu');   // 目錄最上方的群島分頁
 const lambIslandDefs = lambIslands({ signedIn: () => !!store.myUid() });
 let lambWorld = null;
 const ARCHES = {
   main: { label: '🏝️ 青少年群島', sub: '活動、聚會與大家的島民', center: HOME_TARGET, menuTitle: '小島目錄', islands: () => ISLANDS },
   lamb: { label: '🐑 小羊群島', sub: '代禱牆與你的小羊牧場', center: LAMB_CENTER, menuTitle: '小羊群島', islands: () => lambIslandDefs, home: 'lb-altar' },
+  kids: { label: '🎓 台中的孩子群島', sub: '給在外地讀書的台中孩子', center: KIDS_CENTER, menuTitle: '台中的孩子群島', islands: () => KIDS_ISLANDS, home: 'kd-mid', gradOnly: true },
   staff: { label: '🗝️ 服事者群島', sub: '內部消息與統計', center: STAFF_CENTER, menuTitle: '服事者群島', islands: () => staff.STAFF_ISLANDS, home: 'st-hub', staffOnly: true },
 };
 function buildArch(key) {
@@ -1103,7 +1150,7 @@ function setArchVisible(key, v) {
 const archCenter = () => ARCHES[arch].center;
 function homeView() { const c = archCenter(); return [HOME_POS.clone().add(c), c.clone()]; }
 function renderArchMenu() {
-  archMenu.innerHTML = Object.entries(ARCHES).filter(([, a]) => !a.staffOnly || staffAccess).map(([k, a]) =>
+  archMenu.innerHTML = Object.entries(ARCHES).filter(([, a]) => (!a.staffOnly || staffAccess) && (!a.gradOnly || canSeeKids() || staffAccess)).map(([k, a]) =>
     `<button data-arch="${k}" title="${a.sub}"${k === arch ? ' aria-current="true" class="on"' : ''}>${a.label}</button>`).join('');
 }
 archMenu.addEventListener('click', (e) => {
@@ -1113,6 +1160,7 @@ archMenu.addEventListener('click', (e) => {
 function switchArch(to) {
   if (to === arch || !ARCHES[to]) return;
   if (ARCHES[to].staffOnly && !staffAccess) return;
+  if (ARCHES[to].gradOnly && !canSeeKids() && !staffAccess) return;
   closePanel();
   people.close();
   setMenu(false);
@@ -1149,6 +1197,13 @@ async function refreshStaffAccess(u) {
   if (await staff.checkStaff()) { staffAccess = true; if (!menu.hidden) renderArchMenu(); }
 }
 renderMenu();
+// 身分變了：更新捏臉畫面與群島分頁；不再是已畢業／服事者就離開台中的孩子群島
+onProfile((p) => {
+  creator.setProfile(p);
+  if (arch === 'kids' && !canSeeKids() && !staffAccess) switchArch('main');
+  if (!menu.hidden) renderArchMenu();
+  if (selected?.userData.group === 'kids') renderPanel();
+});
 
 // 小羊：資料變了就更新牧場、面板、卡片
 function syncLambWorld() {

@@ -333,6 +333,12 @@ body { touch-action: auto; }
 .sw.on { box-shadow: 0 0 0 3px var(--coral); }
 .cr-note { margin: 0; font-size: 12px; color: var(--ink-soft); line-height: 1.6; background: #f7f1e6; border-radius: 12px; padding: 8px 10px; }
 .cr-save { align-self: stretch; margin-top: 0; }
+.cr-grad { display: grid; gap: 8px; margin-top: 8px; }
+.cr-grad label { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 14px; }
+.cr-grad select, .cr-grad input { flex: 1; min-width: 0; font: inherit; border: 2px solid var(--line); border-radius: 12px; padding: 7px 10px; background: #fff; }
+.list li.past { opacity: .5; }
+.kd-here { margin: 0; padding: 10px 12px; border-radius: 12px; background: #fff3d6; font-weight: 700; }
+.kd-here small { display: block; font-weight: 400; color: var(--ink-soft); }
 @media (max-width: 720px) {
   .creator { padding: 0; align-items: end; }
   .cr-card { grid-template-columns: 1fr; border-radius: 24px 24px 0 0; max-height: 100vh; height: 100%; grid-template-rows: 38vh 1fr; }
