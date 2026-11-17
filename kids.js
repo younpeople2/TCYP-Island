@@ -1,6 +1,7 @@
 // 台中的孩子群島：給已畢業、在外地讀書的台中孩子（建立島民時選「已畢業」或「服事者」，或是服事者帳號，才看得到）
 // 身分、縣市、學校、科系存在代禱網的試算表「島民身分」，只有本人和後台看得到；本機也留一份給自己看。
 import { post } from './prayer.js';
+import { EVENTS } from './data.js';
 
 // 縣市分區。必須和代禱網 apps-script/Code.gs 的 PROFILE_CITIES 一致
 export const REGIONS = [
@@ -24,6 +25,13 @@ const VISITS = [
 const CAMP = {
   url: 'https://forms.gle/FnbWCF1iEdWrQWEa7',
   plan: [['2026-12-12', '第一次隊輔豫備聚會'], ['2027-01-22', '第二次隊輔豫備聚會'], ['2027-01-23', '親子健康生活園', '2027-01-24']],
+};
+
+// 寒假特會返鄉服事：日期、地點跟著 data.js 的行事曆
+const WINTER = {
+  ev: EVENTS.find((e) => e.title === '青少年寒假特會'),
+  url: 'https://forms.gle/4mVGvbZ1q2UANyFj8',
+  prep: ['2027-01-09', '9:00–12:00'],
 };
 
 // ---------- 身分 ----------
@@ -83,6 +91,15 @@ function campHtml(today) {
   return `<ul class="list">${CAMP.plan.map(([d, what, end]) => `<li${(end || d) < today ? ' class="past"' : ''}><span class="num">🗓️</span><b>${what}</b><small>${md(d)}${end ? `–${md(end)}` : ''}</small></li>`).join('')}</ul>
     <div class="goto"><a class="link-btn" href="${CAMP.url}" target="_blank" rel="noopener">📝 報名當隊輔</a></div>`;
 }
+function winterHtml(today) {
+  const ev = WINTER.ev, [pd, pt] = WINTER.prep;
+  return `<p>想回來服事青少年寒假特會嗎？填問卷讓服事者知道。</p>
+    <ul class="list">
+      <li${pd < today ? ' class="past"' : ''}><span class="num">🤝</span><b>特會預備聚會</b><small>${md(pd)} ${pt}</small></li>
+      ${ev ? `<li${(ev.end || ev.start) < today ? ' class="past"' : ''}><span class="num">❄️</span><b>${ev.title}</b><small>${md(ev.start)}${ev.end ? `–${md(ev.end)}` : ''}・${ev.place}${ev.status === 'tentative' ? '（日期以正式通啟為準）' : ''}</small></li>` : ''}
+    </ul>
+    <div class="goto"><a class="link-btn" href="${WINTER.url}" target="_blank" rel="noopener">📝 填返鄉服事問卷</a></div>`;
+}
 function hereHtml(r) {
   if (!r.cities.includes(profile.city)) return '';
   const where = [profile.school, profile.dept].filter(Boolean).map(esc).join('・');
@@ -98,10 +115,11 @@ export const KIDS_ISLANDS = REGIONS.map((r) => ({
       ? sec('', `<p>給在各地讀書的台中孩子——這個秋末，服事者們要去看你！</p>${hereHtml(r)}`)
         + sec('🚗 看望行程', visitsHtml(VISITS, today))
         + sec('🙋 一起來配搭：2027 親子健康生活園隊輔', campHtml(today), 'camp')
+        + sec('❄️ 寒假特會返鄉服事', winterHtml(today), 'winter')
         + sec('其他小島', `<div class="goto">${REGIONS.filter((x) => !x.center).map((x) => `<button data-goto="${x.id}">${x.emoji} ${x.short}</button>`).join('')}</div>`)
       : sec('', hereHtml(r) || `<p>${r.cities.join('、')}的台中孩子，都住在這座島。</p>`)
         + sec('🚗 看望行程', mine.length ? visitsHtml(mine, today) : '<p>這一區還沒有排看望的場次，確定後會放在這裏。</p>')
-        + sec('🙋 一起來配搭', '<p>2027 親子健康生活園正在招募隊輔，歡迎報名。</p><div class="goto"><button data-goto="kd-mid" data-anchor="camp">看期程與報名</button></div>');
+        + sec('🙋 一起來配搭', `<p>2027 親子健康生活園正在招募隊輔；寒假特會也歡迎你回來服事。</p><div class="goto"><button data-goto="kd-mid" data-anchor="camp">親子園隊輔</button><button data-goto="kd-mid" data-anchor="winter">❄️ 寒假特會返鄉服事</button><a class="link-btn" href="${WINTER.url}" target="_blank" rel="noopener">📝 填返鄉服事問卷</a></div>`);
     return hero(r, r.cities.join('・')) + body;
   },
 }));
