@@ -39,20 +39,26 @@ function buildParts(a) {
     [-0.07, 0.07].forEach((x) => part(P, Cyl(0.055, 0.05, 0.32), a.bottomColor, [x, 0.22, 0]));
   } else if (a.bottom === 'shorts') {
     [-0.07, 0.07].forEach((x) => { part(P, Cyl(0.045, 0.045, 0.2), skin, [x, 0.16, 0]); part(P, Cyl(0.065, 0.062, 0.14), a.bottomColor, [x, 0.31, 0]); });
+  } else if (a.bottom === 'longskirt') {
+    [-0.06, 0.06].forEach((x) => part(P, Cyl(0.035, 0.035, 0.06), skin, [x, 0.07, 0]));
+    part(P, Cyl(0.13, 0.23, 0.36, 14), a.bottomColor, [0, 0.24, 0]);
   } else {
     [-0.07, 0.07].forEach((x) => part(P, Cyl(0.042, 0.042, 0.22), skin, [x, 0.17, 0]));
     part(P, Cyl(0.13, 0.21, 0.2, 14), a.bottomColor, [0, 0.3, 0]);
   }
-  // 上身
+  // 上身（白襯衫一律是白色；西裝外套用上衣顏色，前襟露出白襯衫）
   const shoulder = girl ? 0.125 : 0.14;
-  part(P, Cyl(shoulder, 0.15, 0.3, 12), a.topColor, [0, 0.52, 0]);
+  const topC = a.top === 'shirt' ? '#fffaf0' : a.topColor;
+  part(P, Cyl(shoulder, 0.15, 0.3, 12), topC, [0, 0.52, 0]);
+  if (a.top === 'shirt') { [-1, 1].forEach((sd) => part(P, Box(0.07, 0.04, 0.02), '#f1ece2', [sd * 0.035, 0.655, 0.12], [0.3, 0, sd * 0.5])); part(P, Box(0.008, 0.24, 0.01), '#e3dccf', [0, 0.52, 0.152]); }
+  if (a.top === 'suit') { part(P, Box(0.07, 0.16, 0.02), '#fffaf0', [0, 0.58, 0.14]); [-1, 1].forEach((sd) => part(P, Box(0.025, 0.16, 0.02), a.topColor, [sd * 0.045, 0.58, 0.148], [0, 0, sd * 0.35])); }
   if (a.top === 'jacket') part(P, Box(0.07, 0.28, 0.02), '#fffaf0', [0, 0.52, 0.145]);
   if (a.top === 'hoodie') { part(P, Sph(0.11, 10, 6, 0, Math.PI * 2, 0, Math.PI / 2), a.topColor, [0, 0.66, -0.09], [-0.5, 0, 0], [1, 0.8, 0.7]); part(P, Box(0.14, 0.06, 0.02), a.topColor, [0, 0.46, 0.15]); }
   // 手臂
   [-1, 1].forEach((sd) => {
     const x = sd * (shoulder + 0.045);
-    if (sleeveLong) part(P, Cyl(0.042, 0.038, 0.28), a.topColor, [x, 0.53, 0], [0, 0, sd * 0.12]);
-    else { part(P, Cyl(0.048, 0.046, 0.1), a.topColor, [x, 0.62, 0], [0, 0, sd * 0.12]); part(P, Cyl(0.036, 0.034, 0.2), skin, [x + sd * 0.012, 0.47, 0], [0, 0, sd * 0.12]); }
+    if (sleeveLong) part(P, Cyl(0.042, 0.038, 0.28), topC, [x, 0.53, 0], [0, 0, sd * 0.12]);
+    else { part(P, Cyl(0.048, 0.046, 0.1), topC, [x, 0.62, 0], [0, 0, sd * 0.12]); part(P, Cyl(0.036, 0.034, 0.2), skin, [x + sd * 0.012, 0.47, 0], [0, 0, sd * 0.12]); }
     part(P, Sph(0.04, 8, 6), skin, [x + sd * 0.02, 0.37, 0]);
   });
   // 脖子、頭
@@ -88,6 +94,7 @@ function buildParts(a) {
   if (a.acc.includes('bow')) { [-0.05, 0.05].forEach((x) => part(P, new THREE.ConeGeometry(0.045, 0.08, 6), ac, [0.1 + x, hy + 0.16, 0.02], [0, 0, x > 0 ? -Math.PI / 2 : Math.PI / 2])); part(P, Sph(0.025, 6, 5), ac, [0.1, hy + 0.16, 0.02]); }
   if (a.acc.includes('headphones')) { part(P, new THREE.TorusGeometry(0.19, 0.018, 5, 16, Math.PI), ac, [0, hy + 0.02, 0]); [-0.19, 0.19].forEach((x) => part(P, Cyl(0.05, 0.05, 0.05, 10), ac, [x, hy, 0], [0, 0, Math.PI / 2])); }
   if (a.acc.includes('backpack')) { part(P, Box(0.22, 0.26, 0.1), ac, [0, 0.54, -0.18]); part(P, Box(0.16, 0.08, 0.03), ac, [0, 0.46, -0.24]); }
+  if (a.acc.includes('tie')) { part(P, Box(0.045, 0.035, 0.025), ac, [0, 0.655, 0.15]); part(P, Box(0.04, 0.18, 0.015), ac, [0, 0.55, 0.158], [0.08, 0, 0]); }
   if (a.acc.includes('scarf')) { part(P, new THREE.TorusGeometry(0.075, 0.03, 6, 14), ac, [0, 0.69, 0], [Math.PI / 2, 0, 0]); part(P, Box(0.06, 0.16, 0.03), ac, [0.05, 0.6, 0.11]); }
   return P;
 }

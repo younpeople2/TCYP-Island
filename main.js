@@ -12,7 +12,8 @@ import { createChlife } from './chlife.js';
 import { createPrayer, load as loadPrayer, state as prayerState, onChange as onPrayerChange } from './prayer.js';
 import { createTour } from './tour.js';
 import { createPractice } from './practice.js';
-import { KIDS_ISLANDS, loadProfile, saveProfile, onProfile, canSeeKids } from './kids.js';
+import { createPassport } from './passport.js';
+import { KIDS_ISLANDS, loadProfile, saveProfile, onProfile, canSeeKids, myRegion, setFolks } from './kids.js';
 import { lambIslands, lambState, loadLambs, resetLambs, onLambs, createLambWorld, createLambCard, prayFor, fishNaming } from './lambs.js';
 
 // ================= 基本設定 =================
@@ -597,6 +598,18 @@ const builders = {
     put(isl, 5, tree('round', 0.8), -0.2, -0.2);
   },
   // ---------- 台中的孩子群島（已畢業、服事者看得到） ----------
+  'kd-hub'(isl) {
+    // 資訊站：大公告欄（隊輔招募、寒假特會、畢業護照）＋旗子
+    const board = new THREE.Group();
+    [-0.55, 0.55].forEach((x) => board.add(cyl(0.04, 0.04, 1.0, C.woodDark, 6, x)));
+    board.add(box(1.3, 0.7, 0.06, C.wood, 0, 0.55));
+    [[C.coral, -0.38, 0.62], [C.sky, 0.02, 0.66], [C.mint, 0.4, 0.58], [C.sun, -0.12, 0.4]].forEach(([c, x, y]) => board.add(box(0.3, 0.22, 0.02, c, x, y, 0.04)));
+    put(isl, 0, board, 0, -0.2);
+    put(isl, 2, flag(C.coral)); put(isl, 5, flag(C.sky));
+    put(isl, 3, house({ w: 0.8, h: 0.55, wall: '#fff6e0', roof: C.sun }), 0, 0, 0.4);
+    [1, 4].forEach((i) => put(isl, i, tree('round', 0.85))); put(isl, 6, lamp(), 0.2, 0.1);
+    put(isl, 0, person(C.sky), -0.45, 0.45); put(isl, 0, person(C.pink), 0.45, 0.45);
+  },
   'kd-mid'(isl) {
     // 家：亮著燈的房子和等門的人
     const h = put(isl, 0, house({ w: 1.1, h: 0.75, d: 0.85, wall: '#fff6e0', roof: C.coral, roofH: 0.5, chimney: true }), 0, -0.1, 0.4);
@@ -853,6 +866,48 @@ function makePin(isl) {
 }
 islandObjs.forEach(makePin);
 
+// ================= 渡輪碼頭：搭船去其他群島（沒有權限的群島不顯示） =================
+// 碼頭都放在鏡頭正前方（308°）附近的海邊，手機直式畫面也看得到
+const RETURN_DOCK = { lamb: 308, kids: 308, staff: 308 };
+const ferries = [];
+function ferryDock(from, center, angle, to) {
+  const a = THREE.MathUtils.degToRad(angle);
+  const dir = new THREE.Vector3(Math.cos(a), 0, -Math.sin(a));
+  const g = new THREE.Group();
+  for (let k = 0; k < 6; k++) g.add(box(0.55, 0.05, 0.22, k % 2 ? C.wood : '#c48f5c', 0, 0, -0.6 + k * 0.24));
+  [-0.3, 0.3].forEach((x) => [-0.6, 0.6].forEach((z) => g.add(cyl(0.035, 0.035, 0.5, C.woodDark, 6, x, -0.4, z))));
+  const b = boat({ lamb: C.mint, kids: C.sun, staff: C.purple, main: C.coral }[to]);
+  b.position.set(0.62, -0.42, 0.1); b.rotation.y = Math.PI / 2; g.add(b);
+  g.position.copy(center).addScaledVector(dir, from === 'main' ? 15.6 : 11.2);
+  g.position.y = -0.12;
+  g.rotation.y = Math.atan2(dir.x, dir.z);
+  scene.add(g);
+  onTick((t) => { b.position.y = -0.42 + Math.sin(t * 2 + angle) * 0.04; b.rotation.x = Math.sin(t * 1.6 + angle) * 0.05; });
+  const el = document.createElement('button');
+  el.className = 'pin ferry hidden';
+  el.tabIndex = -1;
+  const label = to === 'main' ? '回青少年群島' : ARCHES[to].label.replace(/^\S+\s/, '搭船去');
+  el.innerHTML = `<span class="em" style="--c:#dbeefc">⛵</span><span class="pn">${label}</span>`;
+  el.title = label;
+  el.addEventListener('click', () => switchArch(to));
+  pinsEl.appendChild(el);
+  ferries.push({ from, to, g, el, isl: from === 'main' ? null : islandObjs.find((i) => i.userData.group === from) });
+  return g;
+}
+const canGo = (to) => !!ARCHES[to] && (!ARCHES[to].staffOnly || staffAccess) && (!ARCHES[to].gradOnly || canSeeKids() || staffAccess);
+function updateFerries(w, h) {
+  for (const f of ferries) {
+    const ok = canGo(f.to);
+    f.g.visible = ok && (!f.isl || f.isl.visible);
+    tmpV.copy(f.g.position); tmpV.y += 1.6; tmpV.project(camera);
+    const vis = ok && arch === f.from && tmpV.z < 1 && Math.abs(tmpV.x) < 1.05 && Math.abs(tmpV.y) < 1.05;
+    f.el.classList.toggle('hidden', !vis);
+    if (!vis) continue;
+    const half = (f.el.offsetWidth || 160) / 2 + 8;   // 標籤不超出畫面左右邊緣
+    f.el.style.transform = `translate(${Math.min(w - half, Math.max(half, (tmpV.x * 0.5 + 0.5) * w))}px, ${(-tmpV.y * 0.5 + 0.5) * h}px) translate(-50%, -100%)`;
+  }
+}
+
 // 自己島民頭上的名字
 const mePin = document.createElement('div');
 mePin.className = 'pin me hidden';
@@ -974,11 +1029,13 @@ const creator = createCreator({
     adminClear: store.adminClearReports,
   },
   // 先寫雲端，成功後才更新島上的樣子（失敗時兩邊保持一致）
-  onSave: async (a, p) => {
+  onSave: async (cfg, p) => {
     await saveProfile(p, store.myUid());   // 身分不公開，存在代禱網後台（沒登入只存本機）
+    const a = { ...cfg, region: myRegion(p) };   // 只公開分區（北中南東）
     const res = await store.saveMine(a);
     if (res.publicId) { myPid = res.publicId; islanders.removeOther(myPid); }
     islanders.setMine(a);
+    syncKids();
     focusMine();
   },
 });
@@ -991,6 +1048,7 @@ store.onUser(async (u) => {
   loadProfile(u?.uid || null);
   prayer.userChanged();
   practice.userChanged();
+  passport.userChanged();
   lambReturn = null; lambCard.close();
   resetLambs();
   if (u && arch === 'lamb') loadLambs();
@@ -1057,12 +1115,24 @@ peopleBtn.addEventListener('click', () => { if (people.isOpen()) people.close();
 new MutationObserver(() => { if (!people.isOpen()) peopleBtn.setAttribute('aria-expanded', 'false'); })
   .observe(document.getElementById('people'), { attributes: true, attributeFilter: ['hidden'] });
 
+// 台中的孩子分區島：住著有分區的島民（自己也在自己那一區）
+let lastOthers = [];
+let kidsFolks = null;
+function syncKids() {
+  const list = lastOthers.filter((x) => x.avatar.region && x.pid !== myPid);
+  const me = islanders.mine()?.cfg;
+  setFolks([...list.map((x) => ({ name: x.avatar.name, region: x.avatar.region })), ...(me?.region ? [{ name: me.name, region: me.region, mine: true }] : [])]);
+  if (kidsFolks) { kidsFolks.setOthers(list); if (me) kidsFolks.setMine(me); else kidsFolks.clearMine(); }
+  if (selected?.userData.group === 'kids') renderPanel();
+}
 // 其他人的島民：打開時讀一次，之後每 10 分鐘（畫面在前景時）更新；本機有 10 分鐘快取
 async function refreshOthers(force = false) {
   try {
     const list = await store.loadOthers({ force });
+    lastOthers = list;
     islanders.setOthers(list, { exclude: myPid });
     people.refresh();
+    syncKids();
   } catch (err) { console.error('讀取島民失敗', err); }
 }
 refreshOthers();
@@ -1128,15 +1198,23 @@ let lambWorld = null;
 const ARCHES = {
   main: { label: '🏝️ 青少年群島', sub: '活動、聚會與大家的島民', center: HOME_TARGET, menuTitle: '小島目錄', islands: () => ISLANDS },
   lamb: { label: '🐑 小羊群島', sub: '代禱牆與你的小羊牧場', center: LAMB_CENTER, menuTitle: '小羊群島', islands: () => lambIslandDefs, home: 'lb-altar' },
-  kids: { label: '🎓 台中的孩子群島', sub: '給在外地讀書的台中孩子', center: KIDS_CENTER, menuTitle: '台中的孩子群島', islands: () => KIDS_ISLANDS, home: 'kd-mid', gradOnly: true },
+  kids: { label: '🎓 台中的孩子群島', sub: '給在外地讀書的台中孩子', center: KIDS_CENTER, menuTitle: '台中的孩子群島', islands: () => KIDS_ISLANDS, home: 'kd-hub', gradOnly: true },
   staff: { label: '🗝️ 服事者群島', sub: '內部消息與統計', center: STAFF_CENTER, menuTitle: '服事者群島', islands: () => staff.STAFF_ISLANDS, home: 'st-hub', staffOnly: true },
 };
+[['lamb', 283], ['staff', 308], ['kids', 333]].forEach(([to, ang]) => ferryDock('main', HOME_TARGET, ang, to));
 function buildArch(key) {
   if (built[key]) return;
   built[key] = true;
   const center = ARCHES[key].center, ring = 7.5;
   ARCHES[key].islands().forEach((def) => makePin(placeIsland(def, center, ring, key)));
   islandObjs.filter((i) => i.userData.group === key && !i.userData.def.center).forEach((isl) => archExtras[key].push(...bridge(isl, center, ring)));
+  archExtras[key].push(ferryDock(key, center, RETURN_DOCK[key], 'main'));
+  if (key === 'kids') {
+    const regionIsl = Object.fromEntries(islandObjs.filter((i) => i.userData.group === 'kids' && !i.userData.def.center).map((i) => [i.userData.id, i]));
+    const at = (cfg) => regionIsl[cfg.region] || null;
+    kidsFolks = createIslanders({ islands: Object.values(regionIsl), onTick, lowEnd: LOW_END, target: 0, placeOf: at, mineAt: at });
+    syncKids();
+  }
   if (key === 'lamb') {
     lambWorld = createLambWorld({ islands: islandObjs.filter((i) => i.userData.group === 'lamb' && !i.userData.def.center && i.userData.id !== 'lb-water'), onTick, pinsEl, camera, lowEnd: LOW_END });
     syncLambWorld();
@@ -1168,6 +1246,7 @@ function switchArch(to) {
   const from = arch;
   arch = to;
   buildArch(to);
+  if (to === 'kids') syncKids();
   setArchVisible(to, true);
   sun.position.copy(archCenter()).add(new THREE.Vector3(18, 30, 12));
   sun.target.position.copy(archCenter());
@@ -1202,7 +1281,7 @@ onProfile((p) => {
   creator.setProfile(p);
   if (arch === 'kids' && !canSeeKids() && !staffAccess) switchArch('main');
   if (!menu.hidden) renderArchMenu();
-  if (selected?.userData.group === 'kids') renderPanel();
+  syncKids();
 });
 
 // 小羊：資料變了就更新牧場、面板、卡片
@@ -1271,7 +1350,7 @@ function pickPerson(ev) {
   const r = canvas.getBoundingClientRect();
   ptr.set(((ev.clientX - r.left) / r.width) * 2 - 1, -((ev.clientY - r.top) / r.height) * 2 + 1);
   ray.setFromCamera(ptr, camera);
-  const hit = ray.intersectObjects(islanders.meshes(), false)[0];
+  const hit = ray.intersectObjects(kidsFolks ? [...islanders.meshes(), ...kidsFolks.meshes()] : islanders.meshes(), false)[0];
   const p = hit?.object.userData.person;
   return p && (p.name || p.mine) ? p : null;
 }
@@ -1427,6 +1506,7 @@ panelBody.addEventListener('input', (e) => { if (e.target.dataset.staff === 'q')
 panelBody.addEventListener('click', (e) => {
   if (e.target.closest('[data-open="fishing"]')) return openFishing();
   if (e.target.closest('[data-open="chlife"]')) return chlife.open();
+  if (e.target.closest('[data-open="passport"]')) return passport.open();
   if (e.target.closest('[data-open="prayer"]')) return prayer.open('wall');
   if (e.target.closest('[data-open="prayer-add"]')) return prayer.open('add');
   if (e.target.closest('[data-open="signin"]')) return store.signIn().catch(() => {});
@@ -1594,6 +1674,7 @@ function frame() {
     });
 
   updateMePin(w, h);
+  updateFerries(w, h);
   updateWhoPin(w, h);
   updateTags(w, h);
   lambWorld?.updateLabels(w, h, arch === 'lamb');
@@ -1626,6 +1707,7 @@ const prayer = createPrayer({ signIn: store.signIn, idToken: store.idToken, sign
 
 // 操練本藏寶圖：每週交操練本拼一塊
 const practice = createPractice({ signIn: store.signIn, signedIn: () => !!store.myUid() });
+const passport = createPassport({ signIn: store.signIn, signedIn: () => !!store.myUid() });
 document.getElementById('mapBtn').addEventListener('click', () => { setMenu(false); practice.open(); });
 
 // 召會生活人數統計看板（服事者群島）

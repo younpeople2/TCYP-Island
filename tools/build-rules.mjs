@@ -1,7 +1,7 @@
 // 由 avatar.js 的選項產生 firestore.rules，確保前端選項和後端白名單一致
 // 用法：npm run build:rules
 import { writeFileSync } from 'node:fs';
-import { OPTIONS } from '../avatar-data.js';
+import { OPTIONS, REGION_IDS } from '../avatar-data.js';
 
 const list = (xs) => `[${xs.map((x) => `'${x}'`).join(', ')}]`;
 const ids = (k) => OPTIONS[k].map(([id]) => id);
@@ -10,7 +10,7 @@ const FIELDS = ['v', 'name', 'gender', 'skin', 'hair', 'hairColor', 'hat', 'hatC
 const rules = `rules_version = '2';
 // 台中青少年 TCYP：島民資料（此檔由 tools/build-rules.mjs 產生，請改產生器再重建）
 //
-// islanders/{publicId}  公開的島民外觀與暱稱。publicId 是隨機碼，不是帳號 UID。
+// islanders/{publicId}  公開的島民外觀、暱稱與台中的孩子分區（region，只有北中南東）。publicId 是隨機碼，不是帳號 UID。
 // claims/{publicId}     publicId 屬於哪個帳號（不公開）
 // owners/{uid}          我的 publicId、上次更新時間（只有本人讀得到；用來限制更新頻率）
 // reports/{uid_pid}     檢舉（只有管理員讀得到）
@@ -27,7 +27,7 @@ service cloud.firestore {
     function isPid(v) { return v is string && v.matches('^[A-Za-z0-9]{20}$'); }
 
     function validIslander(d) {
-      return d.keys().hasOnly(${list(FIELDS)})
+      return d.keys().hasOnly(${list([...FIELDS, 'region'])})
         && d.keys().hasAll(${list(FIELDS)})
         && d.v == 1
         && d.name is string && d.name.size() <= 8
@@ -40,6 +40,7 @@ service cloud.firestore {
         && d.bottom in ${list(ids('bottom'))}
         && d.hatColor in cloth() && d.topColor in cloth() && d.bottomColor in cloth() && d.shoes in cloth() && d.accColor in cloth()
         && d.acc is list && d.acc.size() <= ${OPTIONS.acc.length} && d.acc.hasOnly(${list(ids('acc'))})
+        && d.get('region', '') in ${list(REGION_IDS)}
         && d.hidden is bool;
     }
     function cloth() { return ${list(OPTIONS.cloth)}; }

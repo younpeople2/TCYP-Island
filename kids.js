@@ -1,12 +1,15 @@
 // 台中的孩子群島：給已畢業、在外地讀書的台中孩子（建立島民時選「已畢業」或「服事者」，或是服事者帳號，才看得到）
+// 中央是資訊站（隊輔招募、寒假特會、看望行程、畢業護照）；北中南東四座島上走著住在那一區的台中孩子。
 // 身分、縣市、學校、科系存在代禱網的試算表「島民身分」，只有本人和後台看得到；本機也留一份給自己看。
+// 分區（北中南東）會跟著島民外觀公開（avatar-data.js 的 region），別人只看得到你在哪一區。
 import { post } from './prayer.js';
 import { EVENTS } from './data.js';
 
-// 縣市分區。必須和代禱網 apps-script/Code.gs 的 PROFILE_CITIES 一致
+// 縣市分區。縣市必須和代禱網 apps-script/Code.gs 的 PROFILE_CITIES 一致；id 必須和 avatar-data.js 的 REGION_IDS 一致
+const HUB = { id: 'kd-hub', name: '台中的孩子資訊站', short: '資訊站', emoji: '📣', tint: '#ffe7b8', center: true };
 export const REGIONS = [
   { id: 'kd-north', name: '北部之島', short: '北部', emoji: '🏙️', tint: '#dbeafc', angle: 90, cities: ['基隆市', '台北市', '新北市', '桃園市', '新竹市', '新竹縣', '金門縣', '連江縣'] },
-  { id: 'kd-mid', name: '中部之島', short: '中部・台中', emoji: '🏡', tint: '#fff0c9', center: true, cities: ['苗栗縣', '台中市', '彰化縣', '南投縣'] },
+  { id: 'kd-mid', name: '中部之島', short: '中部・台中', emoji: '🏡', tint: '#fff0c9', angle: 180, cities: ['苗栗縣', '台中市', '彰化縣', '南投縣'] },
   { id: 'kd-south', name: '南部之島', short: '南部', emoji: '🌴', tint: '#ffe1cf', angle: 270, cities: ['雲林縣', '嘉義市', '嘉義縣', '台南市', '高雄市', '屏東縣', '澎湖縣'] },
   { id: 'kd-east', name: '東部之島', short: '東部', emoji: '⛰️', tint: '#dff3e4', angle: 0, cities: ['宜蘭縣', '花蓮縣', '台東縣', '海外'] },
 ];
@@ -41,6 +44,9 @@ const listeners = new Set();
 export const onProfile = (f) => listeners.add(f);
 export const getProfile = () => profile;
 export const canSeeKids = () => profile.role === 'grad' || profile.role === 'staff';
+const regionOfCity = (city) => REGIONS.find((r) => r.cities.includes(city))?.id || '';
+// 我的分區（公開在島民外觀上）：只有已畢業、選了縣市的人才有
+export const myRegion = (p = profile) => (p.role === 'grad' ? regionOfCity(p.city) : '');
 const key = (uid) => (uid ? `tcyp-profile:u:${uid}` : 'tcyp-profile:guest');
 const clean = (p) => {
   const role = ROLES.some(([r]) => r === p?.role) ? p.role : '';
@@ -100,26 +106,43 @@ function winterHtml(today) {
     </ul>
     <div class="goto"><a class="link-btn" href="${WINTER.url}" target="_blank" rel="noopener">📝 填返鄉服事問卷</a></div>`;
 }
-function hereHtml(r) {
+function hereHtml(r, onHub = false) {
   if (!r.cities.includes(profile.city)) return '';
   const where = [profile.school, profile.dept].filter(Boolean).map(esc).join('・');
-  return `<p class="kd-here">📍 你在這座島：${esc(profile.city)}${where ? `・${where}` : ''}<small>（只有你和服事者看得到）</small></p>`;
+  return `<p class="kd-here">📍 ${onHub ? `你住在${r.name}` : '你在這座島'}：${esc(profile.city)}${where ? `・${where}` : ''}<small>（縣市、學校、科系只有你和服事者看得到；別人只看得到你在${r.name}）</small></p>`;
 }
 
-export const KIDS_ISLANDS = REGIONS.map((r) => ({
+// 分區島上的人：main.js 用 setFolks 傳進來 [{ name, region, mine }]
+let folks = [];
+export const setFolks = (list) => { folks = list; };
+const folksIn = (id) => folks.filter((f) => f.region === id);
+
+function hubHtml(today) {
+  const mine = REGIONS.find((r) => r.id === myRegion());
+  const you = mine
+    ? `${hereHtml(mine, true)}<div class="goto"><button data-goto="${mine.id}">${mine.emoji} 去${mine.name}看看</button></div>`
+    : `<p class="hint">在「我的島民」把身分選成<b>已畢業</b>、選好縣市，你的島民就會住進北／中／南／東其中一座島。</p>`;
+  return sec('', `<p>給在各地讀書的台中孩子——服事者們想念你！要報名、要回來配搭，都在這裏。</p>${you}`)
+    + `<section class="p-sec kd-cta" id="camp" style="--c:#fff0c9"><span class="kd-tag">🙋 招募中</span><h3>2027 親子健康生活園・招募隊輔</h3>${campHtml(today)}</section>`
+    + `<section class="p-sec kd-cta" id="winter" style="--c:#dbeafc"><span class="kd-tag">❄️ 問卷</span><h3>寒假特會返鄉服事</h3>${winterHtml(today)}</section>`
+    + `<section class="p-sec kd-cta" id="passport" style="--c:#e9f5e1"><span class="kd-tag">🛂 畢業護照</span><h3>畢業護照尋寶圖</h3>
+        <p>照著紙本畢業護照走，每完成一關就拍照上傳，服事者看過會幫你蓋章。</p>
+        <div class="goto"><button class="link-btn" data-open="passport">🗺️ 打開畢業護照</button></div></section>`
+    + sec('🚗 看望行程', visitsHtml(VISITS, today))
+    + sec('分區小島', `<p class="hint">大家的島民會住在自己所在的那一區。</p><div class="goto">${REGIONS.map((x) => `<button data-goto="${x.id}">${x.emoji} ${x.short}・${folksIn(x.id).length} 人</button>`).join('')}</div>`);
+}
+function regionHtml(r, today) {
+  const here = folksIn(r.id), mine = VISITS.filter((v) => v.region === r.id);
+  const names = here.length
+    ? `<div class="kd-folks">${here.map((f) => `<span${f.mine ? ' class="me"' : ''}>${esc(f.name || '島民')}${f.mine ? '（你）' : ''}</span>`).join('')}</div>`
+    : '<p>這座島上還沒有人。已畢業的台中孩子選好縣市後，就會出現在這裏。</p>';
+  return sec('', hereHtml(r) || `<p>住在${r.cities.join('、')}的台中孩子，都住在這座島。</p>`)
+    + sec(`👋 島上的台中孩子（${here.length}）`, names)
+    + sec('🚗 看望行程', mine.length ? visitsHtml(mine, today) : '<p>這一區還沒有排看望的場次，確定後會放在資訊站。</p>')
+    + sec('', '<div class="goto"><button class="link-btn" data-goto="kd-hub" data-anchor="camp">📣 回資訊站：隊輔招募、寒假特會、畢業護照</button></div>');
+}
+
+export const KIDS_ISLANDS = [HUB, ...REGIONS].map((r) => ({
   ...r,
-  render: (now) => {
-    const today = now.date;
-    const mine = VISITS.filter((v) => v.region === r.id);
-    const body = r.center
-      ? sec('', `<p>給在各地讀書的台中孩子——這個秋末，服事者們要去看你！</p>${hereHtml(r)}`)
-        + sec('🚗 看望行程', visitsHtml(VISITS, today))
-        + sec('🙋 一起來配搭：2027 親子健康生活園隊輔', campHtml(today), 'camp')
-        + sec('❄️ 寒假特會返鄉服事', winterHtml(today), 'winter')
-        + sec('其他小島', `<div class="goto">${REGIONS.filter((x) => !x.center).map((x) => `<button data-goto="${x.id}">${x.emoji} ${x.short}</button>`).join('')}</div>`)
-      : sec('', hereHtml(r) || `<p>${r.cities.join('、')}的台中孩子，都住在這座島。</p>`)
-        + sec('🚗 看望行程', mine.length ? visitsHtml(mine, today) : '<p>這一區還沒有排看望的場次，確定後會放在這裏。</p>')
-        + sec('🙋 一起來配搭', `<p>2027 親子健康生活園正在招募隊輔；寒假特會也歡迎你回來服事。</p><div class="goto"><button data-goto="kd-mid" data-anchor="camp">親子園隊輔</button><button data-goto="kd-mid" data-anchor="winter">❄️ 寒假特會返鄉服事</button><a class="link-btn" href="${WINTER.url}" target="_blank" rel="noopener">📝 填返鄉服事問卷</a></div>`);
-    return hero(r, r.cities.join('・')) + body;
-  },
+  render: (now) => hero(r, r.center ? '消息、報名、畢業護照都在這裏' : r.cities.join('・')) + (r.center ? hubHtml(now.date) : regionHtml(r, now.date)),
 }));

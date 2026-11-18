@@ -59,7 +59,7 @@ export function createCreator({ initial, onSave, account }) {
         <label>所在縣市 <select class="cr-city"><option value="">請選擇</option>${REGIONS.map((r) => `<optgroup label="${r.short}">${r.cities.map((c) => `<option${prof.city === c ? ' selected' : ''}>${c}</option>`).join('')}</optgroup>`).join('')}</select></label>
         <label>學校 <input class="cr-school" maxlength="30" autocomplete="off"></label>
         <label>科系 <input class="cr-dept" maxlength="30" autocomplete="off"></label>
-        <p class="cr-note">🔒 縣市、學校、科系不會公開，只有你自己和服事者的後台看得到。${account.enabled ? '登入後才會存到後台。' : ''}</p></div>` : ''}`;
+        <p class="cr-note">🔒 縣市、學校、科系不會公開，只有你自己和服事者的後台看得到；別人只會看到你住在北、中、南或東部之島。${account.enabled ? '登入後才會存到後台。' : ''}</p></div>` : ''}`;
     if (grad) { roleEl.querySelector('.cr-school').value = prof.school; roleEl.querySelector('.cr-dept').value = prof.dept; }
   }
   // 把輸入框裏的字收回 prof（重畫或儲存前）

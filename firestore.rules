@@ -1,7 +1,7 @@
 rules_version = '2';
 // 台中青少年 TCYP：島民資料（此檔由 tools/build-rules.mjs 產生，請改產生器再重建）
 //
-// islanders/{publicId}  公開的島民外觀與暱稱。publicId 是隨機碼，不是帳號 UID。
+// islanders/{publicId}  公開的島民外觀、暱稱與台中的孩子分區（region，只有北中南東）。publicId 是隨機碼，不是帳號 UID。
 // claims/{publicId}     publicId 屬於哪個帳號（不公開）
 // owners/{uid}          我的 publicId、上次更新時間（只有本人讀得到；用來限制更新頻率）
 // reports/{uid_pid}     檢舉（只有管理員讀得到）
@@ -18,7 +18,7 @@ service cloud.firestore {
     function isPid(v) { return v is string && v.matches('^[A-Za-z0-9]{20}$'); }
 
     function validIslander(d) {
-      return d.keys().hasOnly(['v', 'name', 'gender', 'skin', 'hair', 'hairColor', 'hat', 'hatColor', 'top', 'topColor', 'bottom', 'bottomColor', 'shoes', 'acc', 'accColor', 'hidden'])
+      return d.keys().hasOnly(['v', 'name', 'gender', 'skin', 'hair', 'hairColor', 'hat', 'hatColor', 'top', 'topColor', 'bottom', 'bottomColor', 'shoes', 'acc', 'accColor', 'hidden', 'region'])
         && d.keys().hasAll(['v', 'name', 'gender', 'skin', 'hair', 'hairColor', 'hat', 'hatColor', 'top', 'topColor', 'bottom', 'bottomColor', 'shoes', 'acc', 'accColor', 'hidden'])
         && d.v == 1
         && d.name is string && d.name.size() <= 8
@@ -27,10 +27,11 @@ service cloud.firestore {
         && d.hairColor in ['#2b211c', '#5a3a28', '#8a5a3a', '#c9944f', '#e8c27a', '#b8b8c0', '#d9615e', '#6a7fd1']
         && d.hair in ['short', 'spiky', 'bob', 'long', 'ponytail', 'buns', 'none']
         && d.hat in ['none', 'cap', 'beanie', 'bucket', 'straw']
-        && d.top in ['tee', 'long', 'hoodie', 'jacket']
-        && d.bottom in ['pants', 'shorts', 'skirt']
+        && d.top in ['tee', 'long', 'hoodie', 'jacket', 'shirt', 'suit']
+        && d.bottom in ['pants', 'shorts', 'skirt', 'longskirt']
         && d.hatColor in cloth() && d.topColor in cloth() && d.bottomColor in cloth() && d.shoes in cloth() && d.accColor in cloth()
-        && d.acc is list && d.acc.size() <= 5 && d.acc.hasOnly(['glasses', 'bow', 'headphones', 'backpack', 'scarf'])
+        && d.acc is list && d.acc.size() <= 6 && d.acc.hasOnly(['glasses', 'bow', 'headphones', 'backpack', 'scarf', 'tie'])
+        && d.get('region', '') in ['', 'kd-north', 'kd-mid', 'kd-south', 'kd-east']
         && d.hidden is bool;
     }
     function cloth() { return ['#e97a5b', '#f2b544', '#6ba8d8', '#8fd3c1', '#f49aa0', '#a993d6', '#7fb85a', '#fffaf0', '#3b3f4a', '#5b6fa8', '#c75b4a', '#d8cbb8']; }

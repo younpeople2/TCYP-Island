@@ -62,7 +62,8 @@ export function makeWalker(isl) {
   return { free, pathFree, sample, sampleNear, heightAt };
 }
 
-export function createIslanders({ islands, onTick, lowEnd }) {
+// target：示範島民補到幾位；placeOf(item)／mineAt(cfg)：指定住哪座島（回傳 null 就不放），台中的孩子分區島用
+export function createIslanders({ islands, onTick, lowEnd, target = TARGET, placeOf = null, mineAt = null }) {
   islands.forEach((isl) => {
     isl.userData.obstacles = obstaclesOf(isl);
     isl.userData.walker = makeWalker(isl);
@@ -97,11 +98,11 @@ export function createIslanders({ islands, onTick, lowEnd }) {
   // 示範島民：中央廣場多一些，其他島平均分配
   const outer = islands.filter((i) => !i.userData.def.center);
   const plaza = islands.find((i) => i.userData.def.center);
-  const islandFor = (k) => (k % 11 === 0 ? plaza : outer[k % outer.length]);
+  const islandFor = (k) => (k % 11 === 0 && plaza ? plaza : outer[k % outer.length]);
   const demo = [];
   let demoSeq = 0;
   function topUpDemo() {
-    while (people.length < TARGET) {
+    while (people.length < target) {
       const p = add(islandFor(demoSeq++), randomAvatar(rand));
       if (!p) break;
       demo.push(p);
@@ -117,9 +118,12 @@ export function createIslanders({ islands, onTick, lowEnd }) {
     const seen = new Set();
     for (const { pid, avatar } of list) {
       if (pid === exclude) continue;
-      seen.add(pid);
       const cfg = sanitize(avatar);
-      const old = others.get(pid);
+      const want = placeOf ? placeOf(cfg) : islandFor(hash(pid));
+      if (!want) continue;
+      seen.add(pid);
+      let old = others.get(pid);
+      if (old && old.isl !== want) { remove(old); others.delete(pid); old = null; }   // 搬到別區
       if (old) {
         old.mesh.geometry.dispose();
         old.mesh.geometry = avatarGeometry(cfg);
@@ -127,13 +131,13 @@ export function createIslanders({ islands, onTick, lowEnd }) {
         old.cfg = cfg;
         continue;
       }
-      const p = add(islandFor(hash(pid)), cfg);
+      const p = add(want, cfg);
       if (!p) continue;
       p.name = cfg.name;
       p.cfg = cfg;
       p.pid = pid;
       others.set(pid, p);
-      if (demo.length && people.length > TARGET) remove(demo.pop());
+      if (demo.length && people.length > target) remove(demo.pop());
     }
     for (const [pid, p] of others) if (!seen.has(pid)) { remove(p); others.delete(pid); }
     topUpDemo();
@@ -152,8 +156,11 @@ export function createIslanders({ islands, onTick, lowEnd }) {
   function setMine(cfg) {
     if (!cfg) return;
     const name = sanitize(cfg).name;
+    const home = mineAt ? mineAt(sanitize(cfg)) : plaza;
+    if (mine && mine.isl !== home) clearMine();
+    if (!home) return;
     if (!mine) {
-      mine = add(plaza, sanitize(cfg), { mine: true, near: 6 });
+      mine = add(home, sanitize(cfg), { mine: true, near: 6 });
       if (!mine) return;
       mine.mesh.add(marker);
       marker.position.y = 1.35;

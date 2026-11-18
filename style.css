@@ -337,6 +337,13 @@ body { touch-action: auto; }
 .cr-grad label { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 14px; }
 .cr-grad select, .cr-grad input { flex: 1; min-width: 0; font: inherit; border: 2px solid var(--line); border-radius: 12px; padding: 7px 10px; background: #fff; }
 .list li.past { opacity: .5; }
+.kd-cta { background: var(--c); border: 2px solid rgba(0, 0, 0, .06); border-radius: 18px; padding: 14px 16px; }
+.kd-cta h3 { font-size: 18px; margin: 4px 0 6px; }
+.kd-cta .link-btn { font-size: 16px; padding: 10px 18px; background: #fff; border: 2px solid var(--ink); box-shadow: 0 3px 0 rgba(0, 0, 0, .12); cursor: pointer; }
+.kd-tag { display: inline-block; font-size: 12px; font-weight: 800; background: #fff; border-radius: 999px; padding: 2px 10px; }
+.kd-folks { display: flex; flex-wrap: wrap; gap: 6px; }
+.kd-folks span { background: #fff; border: 2px solid var(--line); border-radius: 999px; padding: 3px 10px; font-size: 14px; font-weight: 700; }
+.kd-folks span.me { border-color: #f2b544; background: #fff8e3; }
 .kd-here { margin: 0; padding: 10px 12px; border-radius: 12px; background: #fff3d6; font-weight: 700; }
 .kd-here small { display: block; font-weight: 400; color: var(--ink-soft); }
 @media (max-width: 720px) {
@@ -350,6 +357,7 @@ body { touch-action: auto; }
 .ev-sub ul { list-style: disc; margin: 4px 0 0; padding-left: 20px; display: block; }
 .ev-sub ul li { background: none; border: 0; border-radius: 0; padding: 2px 0; font-size: 13px; }
 .ev-note { display: block; color: #9a6a00; margin-top: 2px; }
+.pin.ferry { background: #eaf6ff; border-color: #6ba8d8; font-weight: 800; z-index: 19000 !important; }
 .pin.me { background: var(--sun); border-color: #e9a630; color: #fff; font-size: 13px; padding: 4px 10px; pointer-events: none; z-index: 20000 !important; }
 .pin.me::after { background: var(--sun); border-color: #e9a630; }
 .pin.who { pointer-events: none; font-size: 13px; padding: 4px 10px; z-index: 19999 !important; }
@@ -1093,6 +1101,27 @@ body:has(.intro:not(.gone)) .people-tab { opacity: 0; pointer-events: none; }
 .pm-q-acts .pm-revoke { margin-left: auto; color: #c0392b; border-color: #f0c9c2; }
 .pm-signed { font-weight: 700; color: #c98a10; font-size: 13px; }
 
+.pp-trail { fill: none; stroke: #b98a3e; stroke-width: 3; stroke-dasharray: 2 9; stroke-linecap: round; }
+.pp-stop { cursor: pointer; outline: none; }
+.pp-stop circle { fill: #f8edd3; stroke: #c9a564; stroke-width: 2; stroke-dasharray: 5 4; transition: transform .15s; transform-box: fill-box; transform-origin: center; }
+.pp-stop .pp-em { font-size: 22px; text-anchor: middle; opacity: .4; filter: grayscale(.8); }
+.pp-stop.open circle { fill: var(--c); stroke: #fff; stroke-width: 3; stroke-dasharray: none; }
+.pp-stop.gold circle { fill: var(--c); stroke: #e9a630; stroke-width: 4; stroke-dasharray: none; filter: drop-shadow(0 0 4px rgba(242, 181, 68, .9)); }
+.pp-stop.open .pp-em, .pp-stop.gold .pp-em { opacity: 1; filter: none; }
+.pp-stop:hover circle, .pp-stop:focus-visible circle, .pp-stop.sel circle { transform: scale(1.15); }
+.pp-stop.sel circle { stroke: var(--ink); stroke-width: 3; stroke-dasharray: none; }
+.pp-lab { font: 700 12px 'Noto Sans TC', sans-serif; fill: #6b4e1f; text-anchor: middle; }
+.pp-finish text { font-size: 30px; text-anchor: middle; }
+.pp-finish .pp-lab { font-size: 12px; }
+.pp-finish:not(.on) { opacity: .45; }
+.pp-detail { border-color: var(--c); }
+.pp-detail .pp-page { display: block; color: var(--ink-soft); font-size: 12px; margin-top: 2px; }
+.pp-slots { grid-template-columns: 1fr; }
+.pp-slots .pm-slot img { height: 150px; object-fit: contain; }
+.pp-mine img { width: 100%; max-height: 260px; object-fit: contain; background: #f5efe2; border-radius: 10px; margin: 6px 0; }
+.pp-mine button { border: 2px solid var(--line); background: #fff; border-radius: 999px; padding: 6px 14px; font-weight: 700; margin: 4px 0 8px; cursor: pointer; }
+.pp-one { grid-template-columns: 1fr; }
+.pp-pick { text-align: center; margin: 4px 0 0; }
 .pm-fx { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
 .pm-fx i { position: absolute; left: var(--x); top: -30px; font-style: normal; font-size: 24px; animation: pmFall 2.2s ease-in var(--d) forwards; }
 @keyframes pmFall { to { transform: translateY(110vh) rotate(260deg); opacity: .2; } }

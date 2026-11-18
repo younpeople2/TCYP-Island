@@ -56,7 +56,7 @@ export function mapSvg(pieces, { next = false } = {}) {
 }
 
 // ---------- 照片：壓成 JPEG ----------
-async function toJpeg(file) {
+export async function toJpeg(file) {
   let img;
   try { img = await createImageBitmap(file); } catch {
     // 舊瀏覽器沒有 createImageBitmap：用 data URL 讀進 <img>（網站的 CSP 不允許 blob: 圖片）
