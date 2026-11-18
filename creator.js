@@ -8,7 +8,8 @@ const TABS = [
   ['hair', '頭髮', [['hair', '髮型'], ['hairColor', '髮色', 'hairColor']]],
   ['hat', '帽子', [['hat', '帽子'], ['hatColor', '帽子顏色', 'cloth']]],
   ['top', '上衣', [['top', '款式'], ['topColor', '顏色', 'cloth']]],
-  ['bottom', '褲裙', [['bottom', '款式'], ['bottomColor', '顏色', 'cloth'], ['shoes', '鞋子', 'cloth']]],
+  ['bottom', '褲裙', [['bottom', '款式'], ['bottomColor', '顏色', 'cloth']]],
+  ['shoe', '鞋子', [['shoe', '鞋款'], ['shoes', '鞋子顏色', 'cloth']]],
   ['acc', '配件', [['acc', '配件（可多選）'], ['accColor', '配件顏色', 'cloth']]],
 ];
 

@@ -27,7 +27,7 @@ service cloud.firestore {
     function isPid(v) { return v is string && v.matches('^[A-Za-z0-9]{20}$'); }
 
     function validIslander(d) {
-      return d.keys().hasOnly(${list([...FIELDS, 'region'])})
+      return d.keys().hasOnly(${list([...FIELDS, 'region', 'shoe'])})
         && d.keys().hasAll(${list(FIELDS)})
         && d.v == 1
         && d.name is string && d.name.size() <= 8
@@ -41,6 +41,7 @@ service cloud.firestore {
         && d.hatColor in cloth() && d.topColor in cloth() && d.bottomColor in cloth() && d.shoes in cloth() && d.accColor in cloth()
         && d.acc is list && d.acc.size() <= ${OPTIONS.acc.length} && d.acc.hasOnly(${list(ids('acc'))})
         && d.get('region', '') in ${list(REGION_IDS)}
+        && d.get('shoe', 'sneaker') in ${list(ids('shoe'))}
         && d.hidden is bool;
     }
     function cloth() { return ${list(OPTIONS.cloth)}; }

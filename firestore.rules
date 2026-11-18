@@ -18,23 +18,24 @@ service cloud.firestore {
     function isPid(v) { return v is string && v.matches('^[A-Za-z0-9]{20}$'); }
 
     function validIslander(d) {
-      return d.keys().hasOnly(['v', 'name', 'gender', 'skin', 'hair', 'hairColor', 'hat', 'hatColor', 'top', 'topColor', 'bottom', 'bottomColor', 'shoes', 'acc', 'accColor', 'hidden', 'region'])
+      return d.keys().hasOnly(['v', 'name', 'gender', 'skin', 'hair', 'hairColor', 'hat', 'hatColor', 'top', 'topColor', 'bottom', 'bottomColor', 'shoes', 'acc', 'accColor', 'hidden', 'region', 'shoe'])
         && d.keys().hasAll(['v', 'name', 'gender', 'skin', 'hair', 'hairColor', 'hat', 'hatColor', 'top', 'topColor', 'bottom', 'bottomColor', 'shoes', 'acc', 'accColor', 'hidden'])
         && d.v == 1
         && d.name is string && d.name.size() <= 8
         && d.gender in ['m', 'f']
         && d.skin in ['#ffe3cc', '#f6cfa8', '#e8b88f', '#cf9568', '#a56c48', '#6e4630']
         && d.hairColor in ['#2b211c', '#5a3a28', '#8a5a3a', '#c9944f', '#e8c27a', '#b8b8c0', '#d9615e', '#6a7fd1']
-        && d.hair in ['short', 'spiky', 'bob', 'long', 'ponytail', 'buns', 'none']
-        && d.hat in ['none', 'cap', 'beanie', 'bucket', 'straw']
-        && d.top in ['tee', 'long', 'hoodie', 'jacket', 'shirt', 'suit']
-        && d.bottom in ['pants', 'shorts', 'skirt', 'longskirt']
+        && d.hair in ['short', 'side', 'spiky', 'curly', 'bob', 'long', 'wavy', 'ponytail', 'braids', 'buns', 'topbun', 'none']
+        && d.hat in ['none', 'cap', 'beanie', 'bucket', 'straw', 'beret', 'gradcap']
+        && d.top in ['tee', 'polo', 'long', 'sweater', 'hoodie', 'jacket', 'cardigan', 'shirt', 'suit', 'bapGreen', 'bapNavy']
+        && d.bottom in ['pants', 'jeans', 'slacks', 'shorts', 'skirt', 'pleated', 'longskirt']
         && d.hatColor in cloth() && d.topColor in cloth() && d.bottomColor in cloth() && d.shoes in cloth() && d.accColor in cloth()
-        && d.acc is list && d.acc.size() <= 6 && d.acc.hasOnly(['glasses', 'bow', 'headphones', 'backpack', 'scarf', 'tie'])
+        && d.acc is list && d.acc.size() <= 12 && d.acc.hasOnly(['glasses', 'sunglasses', 'bow', 'hairclip', 'headphones', 'necklace', 'tie', 'bowtie', 'scarf', 'watch', 'backpack', 'crossbody'])
         && d.get('region', '') in ['', 'kd-north', 'kd-mid', 'kd-south', 'kd-east']
+        && d.get('shoe', 'sneaker') in ['sneaker', 'canvas', 'leather', 'flats', 'boots']
         && d.hidden is bool;
     }
-    function cloth() { return ['#e97a5b', '#f2b544', '#6ba8d8', '#8fd3c1', '#f49aa0', '#a993d6', '#7fb85a', '#fffaf0', '#3b3f4a', '#5b6fa8', '#c75b4a', '#d8cbb8']; }
+    function cloth() { return ['#e97a5b', '#f2b544', '#6ba8d8', '#8fd3c1', '#f49aa0', '#a993d6', '#7fb85a', '#fffaf0', '#3b3f4a', '#5b6fa8', '#c75b4a', '#d8cbb8', '#2f8f5b', '#27365e', '#1f2328', '#8b5e3c', '#c9d3e0']; }
 
     match /islanders/{pid} {
       // 被管理員隱藏的島民，只有本人和管理員讀得到
