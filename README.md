@@ -2,9 +2,9 @@
 
 台中市召會青少年組的互動資訊網站 —— 由六角形小島拼成的 3D 玩具模型城市。
 
-🌐 **https://sunsyuewei.github.io/TCYP-Island/**
+🌐 **https://younpeople2.github.io/TCYP-Island/**
 📷 官方 Instagram：[@tc_yp](https://www.instagram.com/tc_yp/)　▶️ YouTube：[@tcyp479](https://www.youtube.com/@tcyp479)
-📄 [文字版](https://sunsyuewei.github.io/TCYP-Island/?text)　🔒 [隱私說明](https://sunsyuewei.github.io/TCYP-Island/privacy.html)
+📄 [文字版](https://younpeople2.github.io/TCYP-Island/?text)　🔒 [隱私說明](https://younpeople2.github.io/TCYP-Island/privacy.html)
 
 ## 小島導覽
 
