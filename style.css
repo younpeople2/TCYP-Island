@@ -323,7 +323,7 @@ body { touch-action: auto; }
 .cr-tabs { display: flex; gap: 6px; flex-wrap: wrap; }
 .cr-tabs button { border: 2px solid var(--line); background: #fff; border-radius: 999px; padding: 5px 13px; font-weight: 700; font-size: 13px; }
 .cr-tabs button[aria-selected="true"] { background: var(--ink); border-color: var(--ink); color: #fff; }
-.cr-opts { display: grid; gap: 12px; min-height: 150px; }
+.cr-opts { display: grid; gap: 12px; min-height: 150px; flex-shrink: 0; }  /* 不讓 flex 壓扁，否則選項多時會蓋到下面的帳號區 */
 .cr-group b { display: block; font-size: 13px; margin-bottom: 6px; color: var(--ink-soft); }
 .cr-chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .cr-chips button { border: 2px solid var(--line); background: #fff; border-radius: 12px; padding: 6px 12px; font-size: 14px; font-weight: 700; }
