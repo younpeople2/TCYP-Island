@@ -556,7 +556,7 @@ body.staff-mode #liveToday, body.staff-mode #liveNext { opacity: .5; }
   transition: opacity .3s, transform .3s;
 }
 .people-tab span { font-size: 20px; }
-.people-tab b { font-size: 13px; font-weight: 900; writing-mode: vertical-rl; letter-spacing: 2px; }
+.people-tab b { font-size: 13px; font-weight: 900; writing-mode: vertical-rl; letter-spacing: 2px; white-space: nowrap; }
 .people-tab:hover, .people-tab[aria-expanded="true"] { background: #fff0cf; }
 body.panel-open .people-tab, body.staff-mode .people-tab, body.people-open .people-tab { opacity: 0; pointer-events: none; transform: translate(100%, -50%); }
 .people {
