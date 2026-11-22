@@ -81,7 +81,10 @@ export async function signIn() {
 
 export async function signOutUser() {
   const f = await fb();
+  const uid = f?.auth.currentUser?.uid;
   if (f) await f.m.signOut(f.auth);
+  // 登出就清掉這個帳號留在這台裝置的造型與身分（共用手機時別人看不到）；再登入會從雲端讀回來
+  if (uid) { write(userKey(uid), null); write(`tcyp-profile:u:${uid}`, null); }
 }
 
 // 隨機的公開 ID（20 碼英數）

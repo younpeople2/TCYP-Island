@@ -27,6 +27,8 @@ export const STOPS = [
 const FINISH = { x: 560, y: 278 };
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+// 只接受後端產生的 JPEG data URL，其他一律不放進 <img>（防止被塞進別的內容）
+const okImg = (u) => (/^data:image\/jpeg;base64,[A-Za-z0-9+/=]+$/.test(u) ? u : '');
 const stopOf = (id) => STOPS.find((s) => s.id === id);
 
 // 尋寶小路：依序連起每一站，終點是畢業旗
@@ -108,7 +110,7 @@ export function createPassport({ signIn, signedIn }) {
     if (!s) return '<p class="pm-note pp-pick">👆 點地圖上的任一站，就可以上傳那一關的照片。</p>';
     const g = d.stamps.find((x) => x.item === s.id);
     const ph = g && photos[g.sid];
-    const mine = g ? `<div class="pp-mine">${ph && ph !== 'loading' ? `<img src="${ph}" alt="${s.name}的照片">` : `<button data-act="myphoto" data-sid="${g.sid}" ${ph ? 'disabled' : ''}>${ph ? '照片讀取中……' : '📷 看我傳的照片'}</button>`}</div>` : '';
+    const mine = g ? `<div class="pp-mine">${ph && ph !== 'loading' ? `<img src="${ph}" alt="${s.name}的照片">` : `<button data-act="myphoto" data-sid="${esc(g.sid)}" ${ph ? 'disabled' : ''}>${ph ? '照片讀取中……' : '📷 看我傳的照片'}</button>`}</div>` : '';
     let state;
     if (g?.gold) state = '<p class="pm-state gold">✦ 服事者已經蓋章，這一站是金色的！</p>';
     else if (g) state = '<p class="pm-state wait">⏳ 已上傳，等服事者蓋章。還沒蓋章前可以換一張。</p>';
@@ -146,9 +148,9 @@ export function createPassport({ signIn, signedIn }) {
         const s = stopOf(r.item), ph = photos[r.sid];
         return `<li class="${r.gold ? 'gold' : ''}"><div class="pm-q-head"><b>${esc(r.name || r.email)}</b><small>${esc(r.email)}・${s ? `${s.emoji} ${s.name}` : esc(r.item)}</small></div>
           ${ph === 'loading' ? '<p class="pm-wait">照片讀取中……</p>' : ph ? `<div class="pm-q-photos pp-one"><img src="${ph}" alt="${s?.name || ''}" title="點一下放大／縮小"></div>` : ''}
-          <div class="pm-q-acts">${ph ? '' : `<button data-act="photo" data-sid="${r.sid}">📷 看照片</button>`}
-            ${r.gold ? '<span class="pm-signed">✅ 已蓋章</span>' : `<button class="pm-sign" data-act="stamp" data-sid="${r.sid}">🛂 蓋章</button>`}
-            <button class="pm-revoke" data-act="revoke" data-sid="${r.sid}">收回</button></div></li>`;
+          <div class="pm-q-acts">${ph ? '' : `<button data-act="photo" data-sid="${esc(r.sid)}">📷 看照片</button>`}
+            ${r.gold ? '<span class="pm-signed">✅ 已蓋章</span>' : `<button class="pm-sign" data-act="stamp" data-sid="${esc(r.sid)}">🛂 蓋章</button>`}
+            <button class="pm-revoke" data-act="revoke" data-sid="${esc(r.sid)}">收回</button></div></li>`;
       }).join('')}</ul>`;
   }
 
@@ -209,7 +211,7 @@ export function createPassport({ signIn, signedIn }) {
     }
     if (act === 'myphoto' || act === 'photo') {
       photos[sid] = 'loading'; render();
-      try { photos[sid] = (await post('passportPhoto', { sid })).data; }
+      try { photos[sid] = okImg((await post('passportPhoto', { sid })).data); }
       catch (err) { delete photos[sid]; alert(`照片讀不到：${err.message}`); }
       render();
       return;

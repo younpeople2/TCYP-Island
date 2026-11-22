@@ -266,10 +266,11 @@ export function createPrayer({ signIn, idToken, signedIn }) {
   function lambStatsHtml() {
     const st = staffData.stats;
     if (!st) return '';
-    const max = Math.max(1, ...st.days.map((d) => d.prayers));
+    const days = st.days.map((d) => ({ date: String(d.date || ''), users: Number(d.users) || 0, lambs: Number(d.lambs) || 0, prayers: Number(d.prayers) || 0 }));
+    const max = Math.max(1, ...days.map((d) => d.prayers));
     return `<h3 class="pr-sec">🐑 小羊群島（近 7 天）<small>不具名統計</small></h3>
-      <div class="pr-tiles three"><div><small>禱告的人</small><b>${st.week.users}</b></div><div><small>被記念的小羊</small><b>${st.week.lambs}</b></div><div><small>禱告次數</small><b>${st.week.prayers}</b></div></div>
-      <div class="pr-days">${st.days.map((d) => `<div title="${esc(d.date)}：${d.users} 人為 ${d.lambs} 隻小羊禱告 ${d.prayers} 次"><i style="height:${(d.prayers / max) * 100}%"></i><b>${d.prayers}</b><small>${esc(d.date.slice(5).replace('-', '/'))}</small></div>`).join('')}</div>`;
+      <div class="pr-tiles three"><div><small>禱告的人</small><b>${Number(st.week.users) || 0}</b></div><div><small>被記念的小羊</small><b>${Number(st.week.lambs) || 0}</b></div><div><small>禱告次數</small><b>${Number(st.week.prayers) || 0}</b></div></div>
+      <div class="pr-days">${days.map((d) => `<div title="${esc(d.date)}：${d.users} 人為 ${d.lambs} 隻小羊禱告 ${d.prayers} 次"><i style="height:${(d.prayers / max) * 100}%"></i><b>${d.prayers}</b><small>${esc(d.date.slice(5).replace('-', '/'))}</small></div>`).join('')}</div>`;
   }
   function staffHtml() {
     const noOwner = state.rows.filter((r) => !r.owned).length;

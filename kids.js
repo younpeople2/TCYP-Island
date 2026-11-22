@@ -60,14 +60,16 @@ function set(p, uid) {
 }
 
 // 帳號切換時：先用本機的，再用後台的蓋過去
+let profGen = 0;
 export async function loadProfile(uid) {
+  const gen = ++profGen;   // 帳號切換後，前一個帳號晚到的回應要丟掉，不能套到新帳號上
   let local = null;
   try { local = JSON.parse(localStorage.getItem(key(uid))); } catch { /* ignore */ }
   profile = clean(local); listeners.forEach((f) => f(profile));
   if (!uid) return;
   try {
     const r = await post('getProfile');
-    if (r.data) set(r.data, uid);
+    if (gen === profGen && r.data) set(r.data, uid);
   } catch (err) { console.error('讀取身分失敗', err); }
 }
 // 有登入就先存後台，成功後才改本機；p = null 代表刪除

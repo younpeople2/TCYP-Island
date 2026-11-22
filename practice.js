@@ -9,6 +9,8 @@ const MAX_EDGE = 1600;   // 照片長邊壓到這個像素，夠看清楚字又�
 const ORDER = [0, 17, 5, 12, 6, 11, 1, 16, 4, 13, 7, 10, 15, 14, 9, 8, 2, 3];
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+// 只接受後端產生的 JPEG data URL，其他一律不放進 <img>（防止被塞進別的內容）
+const okImg = (u) => (/^data:image\/jpeg;base64,[A-Za-z0-9+/=]+$/.test(u) ? u : '');
 
 // ---------- 拼圖形狀 ----------
 // 每條內部邊的凸起方向固定（用簡單的雜湊），每個人看到的拼圖形狀都一樣
@@ -176,11 +178,11 @@ export function createPractice({ signIn, signedIn }) {
     return `<p class="pm-note">看過照片（或當面看過本子）就按「簽名」，那塊會變成金色。亂拍的照片可以「收回」，那位青少年這週可以重交。</p>
       <ul class="pm-queue">${queue.rows.map((r) => {
         const ph = photos[r.sid];
-        return `<li class="${r.gold ? 'gold' : ''}"><div class="pm-q-head"><b>${esc(r.name || r.email)}</b><small>${esc(r.email)}・第 ${r.n} 塊・${fmtWeek(r.week)}</small></div>
+        return `<li class="${r.gold ? 'gold' : ''}"><div class="pm-q-head"><b>${esc(r.name || r.email)}</b><small>${esc(r.email)}・第 ${Number(r.n) || 0} 塊・${fmtWeek(r.week)}</small></div>
           ${ph === 'loading' ? '<p class="pm-wait">照片讀取中……</p>' : Array.isArray(ph) ? `<div class="pm-q-photos">${ph.map((u, k) => `<img src="${u}" alt="${k ? '申言稿' : '神人生活操練表'}" title="點一下放大／縮小">`).join('')}</div>` : ''}
-          <div class="pm-q-acts">${Array.isArray(ph) || ph === 'loading' ? '' : `<button data-act="photos" data-sid="${r.sid}">📷 看照片</button>`}
-            ${r.gold ? '<span class="pm-signed">✅ 已簽名</span>' : `<button class="pm-sign" data-act="sign" data-sid="${r.sid}">✒️ 簽名</button>`}
-            <button class="pm-revoke" data-act="revoke" data-sid="${r.sid}">收回</button></div></li>`;
+          <div class="pm-q-acts">${Array.isArray(ph) || ph === 'loading' ? '' : `<button data-act="photos" data-sid="${esc(r.sid)}">📷 看照片</button>`}
+            ${r.gold ? '<span class="pm-signed">✅ 已簽名</span>' : `<button class="pm-sign" data-act="sign" data-sid="${esc(r.sid)}">✒️ 簽名</button>`}
+            <button class="pm-revoke" data-act="revoke" data-sid="${esc(r.sid)}">收回</button></div></li>`;
       }).join('')}</ul>`;
   }
 
@@ -256,7 +258,7 @@ export function createPractice({ signIn, signedIn }) {
     }
     if (act === 'photos') {
       photos[sid] = 'loading'; render();
-      try { photos[sid] = await Promise.all([1, 2].map((n) => post('practicePhoto', { sid, n }).then((j) => j.data))); }
+      try { photos[sid] = await Promise.all([1, 2].map((n) => post('practicePhoto', { sid, n }).then((j) => okImg(j.data)))); }
       catch (err) { delete photos[sid]; alert(`照片讀不到：${err.message}`); }
       render();
       return;

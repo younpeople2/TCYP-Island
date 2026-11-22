@@ -3,6 +3,8 @@ import * as THREE from 'three';
 import { OPTIONS, DEFAULT_AVATAR, avatarGeometry, avatarMaterial, randomAvatar, sanitize } from './avatar.js';
 import { ROLES, REGIONS } from './kids.js';
 
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
 const TABS = [
   ['body', '身體', [['gender', '性別'], ['skin', '膚色', 'skin']]],
   ['hair', '頭髮', [['hair', '髮型'], ['hairColor', '髮色', 'hairColor']]],
@@ -96,8 +98,8 @@ export function createCreator({ initial, onSave, account }) {
     try {
       const list = await account.adminReports();
       accEl.innerHTML = `<div class="cr-admin"><div class="cr-acc-btns"><button data-act="admin-back">← 回到我的島民</button></div>
-        ${list.length ? list.map((r) => `<div class="cr-report" data-pid="${r.pid}" data-ids="${r.ids.join(',')}">
-          <b class="cr-rname"></b><small>${r.count} 次檢舉：${Object.entries(r.reasons).map(([k, n]) => `${REASON[k] || k}×${n}`).join('、')}${r.hidden ? '（已隱藏）' : ''}</small>
+        ${list.length ? list.map((r) => `<div class="cr-report" data-pid="${esc(r.pid)}" data-ids="${esc(r.ids.join(','))}">
+          <b class="cr-rname"></b><small>${Number(r.count) || 0} 次檢舉：${Object.entries(r.reasons).map(([k, n]) => `${esc(REASON[k] || k)}×${Number(n) || 0}`).join('、')}${r.hidden ? '（已隱藏）' : ''}</small>
           <div class="cr-acc-btns">${r.hidden === null ? '' : `<button data-act="${r.hidden ? 'unhide' : 'hide'}">${r.hidden ? '恢復顯示' : '隱藏'}</button>`}<button data-act="clear">清除檢舉</button></div></div>`).join('')
         : '<p class="cr-note">目前沒有檢舉。</p>'}</div>`;
       // 暱稱用 textContent 放入，避免被當成 HTML
