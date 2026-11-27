@@ -1,0 +1,1 @@
+import{g as o,p as t}from"./http-icpxA8fy.js";async function e(a){const n=a!=null?`?group_id=${a}`:"";return await o(`/school/${n}`)}async function r(a){return await t("/school/",{name:a.name,group_id:a.group_id??null},!0)}async function s(a,n){return await t(`/school/${a}/update`,n,!0)}async function c(){return await o("/grade/",void 0,!0)}export{c as a,r as b,e as g,s as u};

@@ -201,6 +201,7 @@ export const ISLANDS = [
       const f = state.campusDay ?? now.day;
       return hero('campus', `全台中 ${CAMPUS.length} 個校園排，放學後與同學一起聚集`)
         + sec('什麼是校園排？', '<p>同校或鄰近學校的同學，放學後聚在一起讀聖經、禱告、唱詩、分享生活。我們也為身邊的同學與朋友禱告，並尊重他們的意願，邀請一起參加。</p>')
+        + sec('', '<div class="goto"><a class="link-btn" href="https://liff.line.me/2012816688-cuJCtiAw" target="_blank" rel="noopener">到 LINE 填報</a></div>')
         + sec(f === 'all' ? '每週校園排' : (f === now.day ? `今天（週${WD[now.day]}）的校園排` : `週${WD[f]}的校園排`),
           dayTabs('campusDay', f) + groupList(CAMPUS, f === 'all' ? null : +f, f === 'all'))
         + sec('', groupHint);

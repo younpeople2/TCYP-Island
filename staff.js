@@ -88,10 +88,14 @@ function hero(d, sub) { return `<div class="p-hero" style="--c:${d.tint}"><div c
 function wrap(d, sub, body) {
   const s = state;
   const top = `<div class="st-bar"><span>🔐 ${esc(s.email || '')}</span><button data-staff="refresh">↻ 重新整理</button></div>`;
-  if (s.status === 'loading' && !s.data) return hero(d, sub) + sec('', '<p class="hint">正在從 Google Drive 讀取…</p>');
-  if (s.status === 'error' && !s.data) return hero(d, sub) + sec('', `<p class="cr-warn">讀取失敗（${esc(s.error)}）。請稍後按重新整理。</p>`) + top;
-  if (!s.data) return hero(d, sub) + sec('', '<p class="hint">尚未載入。</p>');
-  return hero(d, sub) + top + body(s.data) + sec('', `<p class="hint">資料來自青少年服事文件 Google Drive，最多 5 分鐘更新一次（上次更新：${ago(s.data.generatedAt)}）。只有資料夾共用名單裏的人看得到這裏。</p>`);
+  const shortcut = tab === 'home'
+    ? sec('', '<div class="goto"><a class="link-btn" href="https://younpeople2.github.io/TCYP-Island/schoolstat/" target="_blank" rel="noopener">校園排點名</a></div>')
+    : '';
+  const intro = hero(d, sub) + shortcut;
+  if (s.status === 'loading' && !s.data) return intro + sec('', '<p class="hint">正在從 Google Drive 讀取…</p>');
+  if (s.status === 'error' && !s.data) return intro + sec('', `<p class="cr-warn">讀取失敗（${esc(s.error)}）。請稍後按重新整理。</p>`) + top;
+  if (!s.data) return intro + sec('', '<p class="hint">尚未載入。</p>');
+  return intro + top + body(s.data) + sec('', `<p class="hint">資料來自青少年服事文件 Google Drive，最多 5 分鐘更新一次（上次更新：${ago(s.data.generatedAt)}）。只有資料夾共用名單裏的人看得到這裏。</p>`);
 }
 
 // 服事工作台：一個入口、三個分頁。其他四座島只當風景（alias），點了也打開工作台
