@@ -1,1 +1,0 @@
-import{g as e,a as r}from"./http-DNP1Pfq6.js";async function a(){return await e("/semester/",void 0,!0)}async function s(t){return await r(`/semester/${t}`,void 0,!0)}async function u(){return await e("/semester/current",void 0,!0)}export{a,s as d,u as g};
