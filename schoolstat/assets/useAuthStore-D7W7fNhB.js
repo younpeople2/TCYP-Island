@@ -1,1 +1,0 @@
-import{ah as e}from"./index-C8Ef2F2Q.js";const n=e("auth",{state:()=>({token:localStorage.getItem("token")||null}),actions:{async login(t){try{this.token=t,localStorage.setItem("token",this.token)}catch(o){throw o}},logout(){this.token=null,localStorage.removeItem("token")}}});export{n as u};
